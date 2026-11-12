@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite this version."
+type: software
+title: "Plate Kinetics Analysis"
+version: 3.5.1
+authors:
+  - family-names: Mao
+    given-names: Hengxu
+repository-code: "https://github.com/hengxu2010/plate-kinetics-analysis"
+url: "https://kinetics.fow.mobi/"
+license: MIT
+abstract: "A browser-based application for importing, grouping, analyzing and visualizing kinetic curves from 96- and 384-well plates, with figure, table and report export."
+keywords:
+  - plate reader
+  - kinetics
+  - fluorescence
+  - data analysis
+  - microplate

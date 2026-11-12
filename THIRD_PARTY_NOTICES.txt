@@ -1,0 +1,19 @@
+Plate Kinetics Analysis v3.5.1
+
+The original application code is licensed under the MIT License in LICENSE.
+Third-party components retain their own licenses and copyright notices.
+
+SheetJS Community Edition 0.20.3
+Website: https://sheetjs.com/
+Copyright (C) 2012-present SheetJS LLC
+License: Apache License, Version 2.0
+License URL: https://www.apache.org/licenses/LICENSE-2.0
+
+The SheetJS library is embedded in index.html as packed data. The full Apache
+License 2.0 text and attribution are included in index.html immediately before
+the embedded library. Retain those notices when redistributing the HTML.
+
+The PCRD parser source comments also acknowledge these format references:
+https://github.com/RByers/zpcrweb/blob/main/docs/pcrd.md
+https://github.com/tomzzzhang/SHARP-processor/blob/master/PCRD_FORMAT.md
+Those references and the source comments remain intact in this release.
