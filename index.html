@@ -26,9 +26,7 @@
 <meta name="description" content="Plate Kinetics Analysis: kinetic curves from 96- and 384-well plates. Import with automatic layout recognition, grouping, curve parameters, statistics, figures and reports. Runs in the browser, online or offline.">
 <meta name="author" content="hx_mao">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Crect width='26' height='26' rx='6' fill='%23077682'/%3E%3Cg fill='%23fff'%3E%3Ccircle cx='7' cy='9' r='2.7' fill-opacity='.45'/%3E%3Ccircle cx='13' cy='9' r='2.7' fill-opacity='.45'/%3E%3Ccircle cx='19' cy='9' r='2.7'/%3E%3Ccircle cx='7' cy='17' r='2.7' fill-opacity='.45'/%3E%3Ccircle cx='13' cy='17' r='2.7'/%3E%3Ccircle cx='19' cy='17' r='2.7' fill-opacity='.45'/%3E%3C/g%3E%3C/svg%3E">
-<title>Plate Kinetics Analysis · v3.5.1</title>
-<meta name="application-version" content="v3.5.1">
-<meta name="application-build" content="pk-v3-5-1-1b42c21befb8">
+<title>孔板动力学分析 · v3.9.1</title>
 <script>
 /* A light / dark choice made in this browser is applied before the first paint (the rest lives at the end of the page). */
 try { var pkUi = JSON.parse(localStorage.getItem('pk.ui.v1') || 'null'); if (pkUi && (pkUi.theme === 'light' || pkUi.theme === 'dark')) document.documentElement.setAttribute('data-theme', pkUi.theme); } catch (e) { /* storage unavailable */ }
@@ -40,7 +38,7 @@ try { var pkUi = JSON.parse(localStorage.getItem('pk.ui.v1') || 'null'); if (pkU
   var root = document.documentElement;
   try {
     var own = JSON.parse(localStorage.getItem('pk.prefs.v1') || 'null');
-    var room = /^\/share\//.test(location.pathname) ? JSON.parse(localStorage.getItem('pk.collab.prefs.v1') || 'null') : null;
+    var room = /^(?:\/kinetics)?\/share\//.test(location.pathname) ? JSON.parse(localStorage.getItem('pk.collab.prefs.v1') || 'null') : null;
     var pick = room && room.langSet === true ? room : own;
     if (pick && pick.langSet === true && /^[a-z]{2,3}(-[A-Za-z0-9]+)*$/.test(pick.lang)) root.lang = pick.lang;
   } catch (e) { /* storage unavailable: the default applies */ }
@@ -48,12 +46,15 @@ try { var pkUi = JSON.parse(localStorage.getItem('pk.ui.v1') || 'null'); if (pkU
   setTimeout(function () { root.className = root.className.replace(/\s*\bpk-wait\b/, ''); }, 3000);
 })();
 </script>
+<meta name="application-version" content="v3.9.1">
+<meta name="application-build" content="pk-v3-9-1-2f2a4ec08dea">
 <style>
 :root {
   /* Layout idea: inputs on the left (plate, groups, settings), outputs on the right (curves, results).
      Accent = cyan for interactive state; data colours are separate (16 group slots in the script). */
   --plane: #eef1f1;
   --surface: #fcfcfb;
+  --card-shadow: 0 1px 2px rgba(14, 18, 19, .04), 0 6px 20px rgba(14, 18, 19, .05);
   --surface-2: #f4f6f6;
   --ink: #0e1213;
   --ink-2: #4b5254;
@@ -80,6 +81,7 @@ try { var pkUi = JSON.parse(localStorage.getItem('pk.ui.v1') || 'null'); if (pkU
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .28);
     --plane: #0d1011;
     --surface: #171a1b;
     --surface-2: #1d2122;
@@ -106,6 +108,7 @@ try { var pkUi = JSON.parse(localStorage.getItem('pk.ui.v1') || 'null'); if (pkU
   }
 }
 :root[data-theme="dark"] {
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .28);
   --plane: #0d1011;
     --surface: #171a1b;
     --surface-2: #1d2122;
@@ -195,7 +198,7 @@ h1, h2, h3 { text-wrap: balance; }
 
 .notice {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  margin: 12px 14px 0; padding: 9px 14px;
+  margin: 14px 18px 0; padding: 9px 14px;
   border: 1px solid var(--hair); border-left: 3px solid var(--accent);
   border-radius: 8px; background: var(--surface); color: var(--ink-2);
 }
@@ -204,12 +207,16 @@ h1, h2, h3 { text-wrap: balance; }
 
 /* ---------- layout ---------- */
 .workspace {
-  display: grid; grid-template-columns: minmax(540px, 680px) minmax(0, 1fr);
-  gap: 14px; padding: 14px; align-items: start;
+  display: grid; grid-template-columns: clamp(420px, 45%, 700px) minmax(0, 1fr);
+  gap: 16px; padding: 16px 18px 24px; align-items: start;
 }
-.col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-@media (max-width: 1180px) {
-  .workspace { grid-template-columns: minmax(0, 1fr); }
+.col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* the analysis settings: a strip across the top of the analysis view, opened with the button in the top bar */
+.workspace > #settingsCard { grid-column: 1 / -1; scroll-margin-top: 72px; }
+#settingsCard .settings { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 24px; }
+@media (max-width: 1480px) { #settingsCard .settings { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1240px) { .workspace { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 1320px) {
   /* the action buttons no longer fit beside the dataset tabs: let the bar grow and the buttons wrap */
   .topbar { height: auto; min-height: 54px; flex-wrap: wrap; padding: 8px 16px; row-gap: 8px; }
   .ds-tabs { order: 3; flex-basis: 100%; }
@@ -221,16 +228,18 @@ h1, h2, h3 { text-wrap: balance; }
   .topbar { position: static; padding: 8px 12px; }
   .top-actions { flex-basis: 100%; justify-content: flex-start; gap: 6px; }
   .top-sep { display: none; }
-  .workspace { padding: 10px; }
+  .workspace { padding: 10px; gap: 10px; }
+  .col { gap: 10px; }
+  .notice, #collabBar { margin: 10px 10px 0; }
 }
 
-.card { background: var(--surface); border: 1px solid var(--hair); border-radius: 11px; min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--hair); border-radius: 13px; box-shadow: var(--card-shadow); min-width: 0; }
 .card-head {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   min-height: 46px; padding: 8px 12px 8px 14px; border-bottom: 1px solid var(--hair);
 }
 /* the title keeps its width; the note after it gives way (with an ellipsis) before the buttons wrap onto a second row */
-.card-head h2 { margin: 0; font-size: 13.5px; font-weight: 600; display: flex; align-items: baseline; gap: 8px; flex: 1000 1 120px; min-width: 0; white-space: nowrap; }
+.card-head h2 { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: baseline; gap: 8px; flex: 1000 1 120px; min-width: 0; white-space: nowrap; }
 .card-head h2 .count { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .count { font: 400 11.5px var(--font-mono); color: var(--muted); }
 .spacer { flex: 1; }
@@ -399,7 +408,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 
 /* ---------- settings ---------- */
 .settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; }
-@media (max-width: 560px) { .settings { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) { .settings, #settingsCard .settings { grid-template-columns: minmax(0, 1fr); } }
 .fset { border: 0; margin: 0; padding: 0; min-width: 0; }
 .fset legend { padding: 0; margin-bottom: 8px; font: 600 10.5px var(--font-mono); letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
 .field { display: grid; grid-template-columns: 76px minmax(0, 1fr); align-items: center; gap: 8px; margin-bottom: 7px; }
@@ -435,6 +444,59 @@ svg.chart .mk text { font: 11px var(--font-mono); fill: var(--ink-2); }
 svg.chart .zb { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1; }
 svg.chart .hit { fill: transparent; cursor: crosshair; }
 @media (prefers-reduced-motion: reduce) { svg.chart .curve { transition: none; } }
+/* the threshold and cut-off lines on the chart: handles on the lines and over the axes, value tags, a readout, a hint */
+#chartCard { position: relative; }
+.tb-layer { position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 3; }
+.tb-layer .tax { position: absolute; cursor: ew-resize; touch-action: pan-y; user-select: none; -webkit-user-select: none; border-radius: 4px; }
+.tb-layer .tax.ty { cursor: ns-resize; touch-action: pan-x; }
+.tb-layer .tax.ty.off { cursor: default; }
+.tb-layer .tax:focus { outline: none; }
+.tb-layer .tax:focus-visible { outline: 1px dashed var(--accent); outline-offset: -1px; }
+.tb-layer .tbl { position: absolute; cursor: ew-resize; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.tb-layer .tbl.h { cursor: ns-resize; touch-action: pan-x; }
+#chartBox.tb-on svg.chart .tb-own { display: none; }
+.tb-tag { position: absolute; z-index: 3; height: 18px; line-height: 16px; padding: 0 5px; font: 500 11.5px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); background: var(--surface); border: 1px solid var(--hair-2); border-radius: 4px; white-space: nowrap; pointer-events: none; box-sizing: border-box; }
+.tb-tag.ghost { color: var(--muted); border-color: transparent; }
+.tb-tag.held, .tb-tag.hint { border-color: var(--accent); }
+.tb-tag.hint { color: var(--accent); }
+.tb-tag.bad { border-color: var(--pos); color: var(--pos); }
+.tb-pill { position: absolute; z-index: 4; width: max-content; display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; min-height: 24px; padding: 1px 8px; font-size: 12px; line-height: 20px; color: var(--ink-2); background: var(--surface); border: 1px solid var(--hair); border-radius: 6px; font-variant-numeric: tabular-nums; box-sizing: border-box; box-shadow: 0 1px 2px rgba(14, 18, 19, .06); }
+.tb-pill > span { white-space: nowrap; }
+.tb-pill .tp-main { color: var(--ink); }
+.tb-pill .tp-note, .tb-pill .tp-neg { color: var(--muted); }
+.tb-pill .tp-neg.bad { color: var(--pos); font-weight: 600; }
+.tb-pill .tp-n { font: inherit; border: 0; background: transparent; padding: 0 3px; cursor: pointer; color: var(--ink); border-radius: 4px; }
+.tb-pill .tp-n.dn { color: var(--muted); }
+.tb-pill .tp-n:hover { background: var(--surface-2); }
+.tb-pill .tp-main, .tb-pill .tp-note { white-space: normal; overflow-wrap: anywhere; min-width: 0; }
+.tb-hint { position: absolute; z-index: 5; width: max-content; max-width: 360px; padding: 6px 8px 6px 10px; font-size: 12px; line-height: 1.55; color: var(--ink-2); background: var(--surface); border: 1px solid var(--accent); border-radius: 6px; box-shadow: var(--shadow); }
+.tb-hint p { margin: 0; }
+.tb-hint .row { display: flex; justify-content: flex-end; margin-top: 4px; }
+svg.chart:not(.chart-ov) .tb-neg { opacity: .28; }
+/* 96 wells: the well's name goes on the line of its id, the curve below it (it used to cover the curve's start) */
+.well .wl { position: absolute; top: 6px; left: 4px; right: 13px; display: flex; align-items: baseline; gap: 4px; min-width: 0; overflow: hidden; white-space: nowrap; }
+.well .wl .wid, .well .wl .wn { position: static; }
+.well .wl .wn { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.well.tb-up::after, .well.tb-down::after { content: ''; position: absolute; inset: 2px; border: 1.5px dashed var(--pos); border-radius: inherit; pointer-events: none; }
+.well.tb-down::after { border-color: var(--muted); }
+#plate.cutting .well svg { clip-path: inset(0 calc(100% - var(--cut, 100%)) 0 0); }
+#btnReplay svg { width: 11px; height: 11px; }
+/* notes about the experiment of a dataset: an icon before its name, filled while it has notes */
+.ds-tab .nb { flex: none; width: 22px; height: 22px; margin: 0 -2px 0 -4px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+.ds-tab .nb:hover { background: var(--hair); color: var(--ink); }
+.ds-tab .nb svg { width: 14px; height: 14px; }
+.ds-tab .nb.has { color: var(--accent); }
+.ds-tab .nb.has svg path:first-child { fill: var(--accent-wash-2); }
+.pop.notes { width: 360px; }
+/* "Parameter markers": a menu of the marks the chart draws */
+#btnMarkers .mk-n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.pop.mk-pop { width: 270px; }
+.pop .mk-list { display: grid; gap: 6px; }
+.pop .mk-list .chk { margin: 0; }
+.pop .mk-sep { border-top: 1px solid var(--hair); margin: 2px 0; }
+.pop .mk-note { margin: 2px 0 0; font-size: 11.5px; line-height: 1.45; color: var(--muted); }
+.pop .mk-row { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; }
+.pop textarea.notes-ta { display: block; width: 100%; box-sizing: border-box; min-height: 140px; resize: vertical; font: 13px/1.5 var(--font-sans); }
 .legend { display: flex; flex-wrap: wrap; gap: 2px 10px; padding: 6px 14px 12px; min-height: 30px; }
 .lg { display: inline-flex; align-items: center; gap: 6px; padding: 2px 5px; border-radius: 5px; color: var(--ink-2); font-size: 12px; cursor: pointer; border: 0; background: transparent; max-width: 260px; }
 .lg:hover { background: var(--surface-2); color: var(--ink); }
@@ -480,6 +542,14 @@ table.data td .sw { display: inline-block; width: 10px; height: 10px; border-rad
 .call.ex { color: var(--muted); font-style: italic; }
 .res-foot { padding: 8px 14px; color: var(--muted); font-size: 11.5px; border-top: 1px solid var(--hair); }
 .btn.active { border-color: var(--accent); background: var(--accent-wash); color: var(--accent-strong); font-weight: 600; }
+/* the button that opens the analysis settings strip */
+.btn.set-toggle::after { content: ""; width: 6px; height: 6px; margin: -3px 1px 0 3px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); opacity: .7; }
+.btn.set-toggle[aria-pressed="true"] { background: var(--accent-wash-2); border-color: var(--accent); color: var(--accent-strong); }
+.btn.set-toggle[aria-pressed="true"]::after { transform: rotate(-135deg); margin-top: 3px; }
+/* the analysis has a warning (no usable blank, no negative control for the chosen threshold): shown on the button too,
+   as the strip with the warning may be closed */
+.btn.set-toggle.warn { border-color: var(--warn); color: var(--warn); background: var(--warn-wash); }
+.btn.set-toggle.warn::before { content: "!"; font-weight: 700; margin-right: 1px; }
 .stat-wrap { max-height: 330px; border-top: 1px solid var(--hair); }
 table.data td.sigc { font-family: var(--font-mono); color: var(--muted); }
 table.data td.sigc.yes { color: var(--ink); font-weight: 700; letter-spacing: 0.06em; }
@@ -598,7 +668,7 @@ html.pk-wait body { visibility: hidden; }
       <circle cx="7" cy="17" r="2.6" fill="currentColor" fill-opacity=".22"/><circle cx="13" cy="17" r="2.6" fill="var(--accent)" fill-opacity=".55"/><circle cx="19" cy="17" r="2.6" fill="currentColor" fill-opacity=".22"/>
     </svg>
     <div class="brand-copy">
-      <div class="brand-name"><span>Plate Kinetics Analysis</span><span class="brand-author" translate="no">by hx_mao</span><span class="brand-version" id="brandVersion" role="button" tabindex="0" translate="no" aria-label="Version v3.5.1">v3.5.1</span></div>
+      <div class="brand-name"><span>Plate Kinetics Analysis</span><span class="brand-author" translate="no">by hx_mao</span><span class="brand-version" id="brandVersion" role="button" tabindex="0" translate="no" aria-label="Version v3.9.1">v3.9.1</span></div>
       <div class="brand-sub">PLATE KINETICS · 96 / 384</div>
     </div>
   </div>
@@ -614,6 +684,7 @@ html.pk-wait body { visibility: hidden; }
     <button class="btn" id="btnShare" type="button">Share</button>
     <button class="btn primary" id="btnExport" type="button">Export data…</button>
     <button class="btn fold" id="btnOffline" type="button" title="Download the whole app (one HTML file) for offline use" aria-label="Download app" aria-haspopup="dialog"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 9.5v-6h11v6M1.5 12.5h13M8 5v4.6m0 0L6.2 7.8M8 9.6l1.8-1.8"/></svg><span class="l-wide">Download app</span></button>
+    <button class="btn set-toggle" id="btnSettings" type="button" aria-pressed="false" aria-controls="settingsCard" title="Threshold, lag time, plateau and the other settings of the analysis">Analysis settings</button>
     <button class="btn icon" id="btnMenu" type="button" title="Appearance, autosave, shortcuts" aria-label="Settings and help" aria-haspopup="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M2 5h5.4M11.6 5H14M2 11h2.4M8.6 11H14"/><circle cx="9.5" cy="5" r="1.9"/><circle cx="6.5" cy="11" r="1.9"/></svg></button>
     <div class="seg sm lang" id="langSeg" role="group" aria-label="Language" translate="no"></div>
   </div>
@@ -622,76 +693,11 @@ html.pk-wait body { visibility: hidden; }
 </header>
 <div class="notice" id="notice" hidden></div>
 <main class="workspace" id="workspace">
-  <div class="col col-left">
-    <section class="card" id="plateCard" aria-label="Plate">
-      <div class="card-head">
-        <h2>Plate <span class="count" id="plateInfo"></span></h2>
-        <span class="spacer"></span>
-        <div class="seg sm" id="plateFmt" role="group" aria-label="Plate format"><button type="button" data-v="96">96</button><button type="button" data-v="384">384</button></div>
-        <select id="plateMode" aria-label="Well display">
-          <option value="spark">Wells: curve thumbnails</option>
-          <optgroup label="Parameter heat map">
-            <option value="heat:lag">Heat map: lag time</option>
-            <option value="heat:t50">Heat map: T50</option>
-            <option value="heat:Fmax">Heat map: max fluorescence</option>
-            <option value="heat:tPlateau">Heat map: time to plateau</option>
-            <option value="heat:maxSlope">Heat map: max slope</option>
-            <option value="heat:auc">Heat map: AUC</option>
-            <option value="heat:fold">Heat map: Fmax/F0</option>
-          </optgroup>
-          <option value="call">Wells: positive / negative</option>
-        </select>
-      </div>
-      <div class="card-body">
-        <div class="plate-wrap"><div class="plate" id="plate" tabindex="0" role="grid" aria-label="Plate: click or drag to select wells; click a row or column header to select it"></div></div>
-        <div class="plate-foot" id="plateFoot"></div>
-      </div>
-      <div class="selbar" id="selBar">
-        <div class="row">
-          <div class="selinfo" id="selInfo"></div>
-          <span class="spacer"></span>
-          <button class="btn sm ghost" id="btnSelAll" type="button">Select all</button>
-          <button class="btn sm ghost" id="btnSelInv" type="button">Invert</button>
-          <button class="btn sm ghost" id="btnSelNone" type="button">Clear selection</button>
-        </div>
-        <div class="row chiprow">
-          <span class="rowlab" id="chipLab">Group</span>
-          <div class="gchips" id="groupChips" role="group" aria-label="Add the selected wells to a group"></div>
-        </div>
-        <div class="row">
-          <div class="grp">
-            <input type="text" id="selName" placeholder="Sample name" aria-label="Name the selected wells" data-i18n-keep="placeholder">
-            <label class="chk" title="Append 1, 2, 3… to the name"><input type="checkbox" id="selNumber"> Number</label>
-            <button class="btn sm" id="btnApplyName" type="button" data-i18n="verb">Name</button>
-          </div>
-          <span class="sep"></span>
-          <div class="grp">
-            <button class="btn sm ghost" id="btnSelColor" type="button" title="Changes only the display colour of the selected wells, not their group; choose “Follow group” in the colour panel to go back"><i class="swi"></i>Well colour</button>
-            <button class="btn sm ghost" id="btnExclude" type="button" title="Leave out of analysis and statistics">Exclude</button>
-            <button class="btn sm ghost" id="btnClearMeta" type="button" title="Clear the names, groups and colours of the selected wells">Clear labels</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="card" id="groupCard" aria-label="Group">
-      <div class="card-head">
-        <h2 data-i18n="heading">Groups <span class="count" id="groupCount"></span></h2>
-        <span class="spacer"></span>
-        <button class="btn sm" id="btnQuickGroup" type="button" title="Build all groups at once from the replicate layout (every n wells down or across, whole rows or columns)">Quick groups…</button>
-        <button class="btn sm" id="btnAutoGroup" type="button" title="Wells with the same name form one group">Group by name</button>
-        <button class="btn sm" id="btnPasteLayout" type="button" title="Paste a plate layout (table of sample names) copied from Excel">Paste layout</button>
-        <button class="btn sm" id="btnColoring" type="button" title="Colour all groups at once: a different colour per group, or shades of one colour">Colours…</button>
-      </div>
-      <div class="gsets" id="gsets" role="tablist" aria-label="Grouping set"></div>
-      <div class="glist" id="groupList"></div>
-      <div class="gfoot" id="groupFoot"></div>
-    </section>
-
-    <section class="card" id="settingsCard" aria-label="Analysis settings">
+    <section class="card" id="settingsCard" aria-label="Analysis settings" hidden>
       <div class="card-head">
         <h2>Analysis settings</h2>
         <span class="spacer"></span>
+        <label class="lbl" for="setScope" title="Whether the analysis settings are the same for every dataset or each dataset has its own">Apply to <select id="setScope"><option value="all">all datasets alike</option><option value="each">each dataset separately</option></select></label>
         <button class="btn sm ghost" id="btnDefs" type="button" aria-expanded="false">Definitions</button>
         <button class="btn sm ghost" id="btnResetSet" type="button">Reset to defaults</button>
       </div>
@@ -767,6 +773,72 @@ html.pk-wait body { visibility: hidden; }
         </div>
       </div>
     </section>
+
+  <div class="col col-left">
+    <section class="card" id="plateCard" aria-label="Plate">
+      <div class="card-head">
+        <h2>Plate <span class="count" id="plateInfo"></span></h2>
+        <span class="spacer"></span>
+        <div class="seg sm" id="plateFmt" role="group" aria-label="Plate format"><button type="button" data-v="96">96</button><button type="button" data-v="384">384</button></div>
+        <select id="plateMode" aria-label="Well display">
+          <option value="spark">Wells: curve thumbnails</option>
+          <optgroup label="Parameter heat map">
+            <option value="heat:lag">Heat map: lag time</option>
+            <option value="heat:t50">Heat map: T50</option>
+            <option value="heat:Fmax">Heat map: max fluorescence</option>
+            <option value="heat:tPlateau">Heat map: time to plateau</option>
+            <option value="heat:maxSlope">Heat map: max slope</option>
+            <option value="heat:auc">Heat map: AUC</option>
+            <option value="heat:fold">Heat map: Fmax/F0</option>
+          </optgroup>
+          <option value="call">Wells: positive / negative</option>
+        </select>
+      </div>
+      <div class="card-body">
+        <div class="plate-wrap"><div class="plate" id="plate" tabindex="0" role="grid" aria-label="Plate: click or drag to select wells; click a row or column header to select it"></div></div>
+        <div class="plate-foot" id="plateFoot"></div>
+      </div>
+      <div class="selbar" id="selBar">
+        <div class="row">
+          <div class="selinfo" id="selInfo"></div>
+          <span class="spacer"></span>
+          <button class="btn sm ghost" id="btnSelAll" type="button">Select all</button>
+          <button class="btn sm ghost" id="btnSelInv" type="button">Invert</button>
+          <button class="btn sm ghost" id="btnSelNone" type="button">Clear selection</button>
+        </div>
+        <div class="row chiprow">
+          <span class="rowlab" id="chipLab">Group</span>
+          <div class="gchips" id="groupChips" role="group" aria-label="Add the selected wells to a group"></div>
+        </div>
+        <div class="row">
+          <div class="grp">
+            <input type="text" id="selName" placeholder="Sample name" aria-label="Name the selected wells" data-i18n-keep="placeholder">
+            <label class="chk" title="Append 1, 2, 3… to the name"><input type="checkbox" id="selNumber"> Number</label>
+            <button class="btn sm" id="btnApplyName" type="button" data-i18n="verb">Name</button>
+          </div>
+          <span class="sep"></span>
+          <div class="grp">
+            <button class="btn sm ghost" id="btnSelColor" type="button" title="Changes only the display colour of the selected wells, not their group; choose “Follow group” in the colour panel to go back"><i class="swi"></i>Well colour</button>
+            <button class="btn sm ghost" id="btnExclude" type="button" title="Leave out of analysis and statistics">Exclude</button>
+            <button class="btn sm ghost" id="btnClearMeta" type="button" title="Clear the names, groups and colours of the selected wells">Clear labels</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="groupCard" aria-label="Group">
+      <div class="card-head">
+        <h2 data-i18n="heading">Groups <span class="count" id="groupCount"></span></h2>
+        <span class="spacer"></span>
+        <button class="btn sm" id="btnQuickGroup" type="button" title="Build all groups at once from the replicate layout (every n wells down or across, whole rows or columns)">Quick groups…</button>
+        <button class="btn sm" id="btnAutoGroup" type="button" title="Wells with the same name form one group">Group by name</button>
+        <button class="btn sm" id="btnPasteLayout" type="button" title="Paste a plate layout (table of sample names) copied from Excel">Paste layout</button>
+        <button class="btn sm" id="btnColoring" type="button" title="Colour all groups at once: a different colour per group, or shades of one colour">Colours…</button>
+      </div>
+      <div class="gsets" id="gsets" role="tablist" aria-label="Grouping set"></div>
+      <div class="glist" id="groupList"></div>
+      <div class="gfoot" id="groupFoot"></div>
+    </section>
   </div>
 
   <div class="col col-right">
@@ -775,7 +847,7 @@ html.pk-wait body { visibility: hidden; }
         <h2>Kinetic curves <span class="count" id="chartInfo"></span></h2>
         <span class="spacer"></span>
         <button class="btn sm" id="btnZoomReset" type="button" hidden>Reset zoom</button>
-        <button class="btn sm" id="btnAxes" type="button" title="Fix the X / Y axis ranges and ticks; grid lines, data points, labels and export size">Axes…</button>
+        <button class="btn sm" id="btnReplay" type="button" hidden></button> <button class="btn sm" id="btnAxes" type="button" title="Fix the X / Y axis ranges and ticks; grid lines, data points, labels and export size">Axes…</button>
         <button class="btn sm" id="btnChartCopy" type="button" title="Copy the chart to the clipboard as an image, ready to paste into slides or a document">Copy image</button>
         <button class="btn sm" id="btnChartPng" type="button" title="Export a PNG image (2× resolution)">PNG</button>
         <button class="btn sm" id="btnChartSvg" type="button" title="Export an SVG vector graphic (editable in Illustrator / Inkscape)">SVG</button>
@@ -792,13 +864,14 @@ html.pk-wait body { visibility: hidden; }
         </select></label>
         <label class="chk"><input type="checkbox" id="logY"> Log Y axis</label>
         <label class="chk"><input type="checkbox" id="showSmooth"> Show smoothed curves</label>
-        <label class="chk"><input type="checkbox" id="showMarkers"> Parameter markers</label>
+        <button class="btn sm" id="btnMarkers" type="button" aria-haspopup="true"><span>Parameter markers</span><span class="mk-n" translate="no"></span> ▾</button>
         <label class="lbl" for="labelMode">Curve names <select id="labelMode"><option value="end">At curve ends</option><option value="below">Legend</option><option value="none">Hidden</option></select></label>
         <label class="lbl grp-only" id="chartSetBox">Set <select id="chartSet" aria-label="Grouping set"></select></label>
         <span class="lbl grp-only">Error band <select id="bandMode"><option value="sd">± SD</option><option value="sem">± SEM</option><option value="none" data-i18n="band">None</option></select></span>
         <label class="chk grp-only"><input type="checkbox" id="showReps"> Overlay wells</label>
       </div>
       <div class="chart-box" id="chartBox"></div>
+      <div class="tb-layer" id="tbLayer" hidden></div>
       <div class="legend" id="legend"></div>
     </section>
 
@@ -1489,14 +1562,14 @@ function parseWell(v) {
    "Well B7". parseWellTagged() reads those: { r, c, id, tag }, where tag is the attached text ('' when it only says
    "well"). A separator or brackets are required, so that "H2O" or "B12" inside a word are not taken for wells. */
 const WELL_WORD_RE = /^(?:wells?|pos(?:ition)?|孔位|孔号|孔)\s*[:#.\-_]?\s*(?=[A-Pa-p]\s*[-_]?\s*\d)/i;
-const WELL_SUFFIX_RE = /^([A-Pa-p])\s*[-_]?\s*0*([1-9]\d?)\s*(?:[_\-.:;,\/|\s]\s*(\S.{0,23})|[(\[（【]\s*([^)\]）】]{1,24}?)\s*[)\]）】])$/;
+const WELL_SUFFIX_RE = /^([A-Pa-p])\s*[-_]?\s*0*([1-9]\d?)\s*(?:[_\-.:;,\/|\s]\s*(\S.{0,79})|[(\[（【]\s*([^)\]）】]{1,24}?)\s*[)\]）】])$/;
 const WELL_PREFIX_RE = /^(\S.{0,23}?)\s*[_\-.:;,\/|\s]\s*([A-Pa-p])0*([1-9]\d?)$/;
 const WELL_BRACKET_RE = /^(\S.{0,27}?)\s*[(\[（【]\s*(?:wells?\s*)?([A-Pa-p])\s*[-_]?\s*0*([1-9]\d?)\s*[)\]）】]$/i;
 const NOT_A_WELL_TAG = /^(?:samples?|groups?|std|standards?|blanks?|controls?|ctrl|neg|unknowns?|reps?|replicates?|dilutions?|conc|样品|样本|分组|组|标准品?|空白|对照)\s*\d*$/i;
 function parseWellTagged(v) {
   if (typeof v !== 'string') return null;
   let s = v.trim();
-  if (s.length < 3 || s.length > 40 || !/[A-Pa-p]\s*[-_]?\s*\d/.test(s)) return null;          // (most cells are plain numbers)
+  if (s.length < 3 || s.length > 90 || !/[A-Pa-p]\s*[-_]?\s*\d/.test(s)) return null;          // (most cells are plain numbers; a name after the id can be long)
   const bare = s.replace(WELL_WORD_RE, '');
   if (bare !== s) { const w = parseWell(bare); if (w) return Object.assign(w, { tag: '' }); s = bare; }
   let m = WELL_SUFFIX_RE.exec(s), L, N, tag;
@@ -1516,10 +1589,11 @@ function num(v) {
   let s = String(v).trim();
   if (!s) return NaN;
   s = s.replace(/[\u00a0\u2009\u202f]/g, '');
+  // (groups of thousands follow one to three digits, the first of them not 0: "0,123" is never 123)
   if (CTX.dc) {
-    if (/^[-+]?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, '');
+    if (/^[-+]?[1-9]\d{0,2}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, '');
     s = s.replace(',', '.');
-  } else if (/^[-+]?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) {
+  } else if (/^[-+]?[1-9]\d{0,2}(,\d{3})+(\.\d+)?$/.test(s)) {
     s = s.replace(/,/g, '');
   }
   if (!NUM_RE.test(s)) return NaN;
@@ -1537,7 +1611,12 @@ function detectDecimalComma(T) {
     for (const v of row) {
       if (typeof v !== 'string') continue;
       const s = v.trim();
-      if (/^[-+]?\d+,\d+$/.test(s)) { if (s.split(',')[1].length !== 3) commaDec++; else comma3++; }
+      if (/^[-+]?\d+,\d+$/.test(s)) {
+        // three digits after the comma can be thousands, but not after a 0 or after more than three digits:
+        // "0,250" and "1234,567" are decimals for sure
+        const [whole, rest] = s.replace(/^[-+]/, '').split(',');
+        if (rest.length !== 3 || whole.length > 3 || whole[0] === '0') commaDec++; else comma3++;
+      }
       else if (/^[-+]?\d+\.\d+$/.test(s)) dotDec++;
       if (++seen > 6000) break outer;
     }
@@ -1973,6 +2052,7 @@ const LOCALES = {
       'Colours…': '配色…',
       'Grouping set': '分组方案',
       'Analysis settings': '分析设置',
+      'Threshold, lag time, plateau and the other settings of the analysis': '阈值、起峰时间、平台期等分析设置',
       'Definitions': '参数定义',
       'Reset to defaults': '恢复默认',
       'Preprocessing': '预处理',
@@ -2162,6 +2242,7 @@ const LOCALES = {
       'The wells are written number first (“1A”) and were read as A1, A2 …; use manual mapping if these are sample names instead.': '孔位写作“1A”的形式（数字在前），已读作 A1、A2…；如果这些其实是样品名称，请用手动映射。',
       'This block was inferred from repeated wells and a shared time axis; no complete standard header was found. Check the well, time and signal columns, and use manual mapping if needed.': '此数据块根据重复孔位与共享时间轴推断，未找到完整标准表头；请核对孔位、时间列和信号列，必要时使用手动映射。',
       'The threshold is “negative-control mean + k·SD” but no negative-control group is set (or it has no data); using well baseline + k·SD instead': '阈值方式为“阴性对照均值 + k·SD”，但没有指定阴性对照组（或组内无数据），已改用每孔基线 + k·SD',
+      'A negative-control well rises by itself, which lifts the threshold of the whole plate: check the negative controls (exclude a well that is contaminated)': '有阴性对照孔自己起峰了，整板的阈值因此被抬高：请检查阴性对照（被污染的孔可以排除）',
       'The file gives cycle numbers, not actual times; cycle numbers are shown for preview. Enter the real sampling interval before any time-based analysis: cycle numbers must not be read as minutes or hours.': '文件提供的是循环编号，尚无实际时间；当前保留循环数预览。请填写真实采样间隔后再进行时间相关分析，不能将循环数直接当作分钟或小时。',
       'The file has no complete, unique row of actual times: enter the real reading interval.': '文件中没有完整且唯一的实际时间行，请填写真实读数间隔。',
       '{0} well–cycle combinations have no measured value and are kept empty.': '有 {0} 个孔位–循环组合缺少测量值，保留为空值。',
@@ -2260,6 +2341,18 @@ const LOCALES = {
       'Shared room': '协作房间',
       'Manage room': '管理房间',
       'About sharing': '协作说明',
+      'Shared curve selection': '共同选曲线',
+      'Everyone sees the same selected wells': '所有人显示同一组选中孔',
+      'Selection sharing paused while disconnected': '已断线，选区同步暂停',
+      'Loading the shared selection…': '正在读取共同选区…',
+      'Loading the room; curve selections are shared': '正在加载房间，曲线选区由所有人共享',
+      'Shared rooms use the same selected-well curves for everyone': '协作房间中的所有人显示同一组选中孔的曲线',
+      'Selection received · applying when you finish typing': '已收到选区，完成输入后更新',
+      'The shared curve selection changed; showing the latest selection': '共同选区已被更新，已显示最新选区',
+      'Participant {0}': '参与者 {0}',
+      'Another participant': '另一位参与者',
+      'You': '你',
+      '{0} updated the shared selection': '{0} 更新了共同选区',
       'Smoothing method': '平滑方法',
       'Threshold method': '阈值方法',
       'Fixed threshold': '固定阈值',
@@ -2904,7 +2997,7 @@ const LOCALES = {
       'Room data is kept on the server, so autosave in this browser is not used here.': '协作房间的数据保存在服务器上，这里不使用本机自动保存。',
       'Add a grouping set (up to {0}): the same wells can be grouped in different ways': '新建一套分组方案（最多 {0} 套），同一批孔可以有不同的分组方式',
       '+ New set': '+ 新方案',
-      '. It is kept in this browser only; you can turn this off under Settings, top right': '。数据只存在本机浏览器里，可在右上角的设置中关闭',
+      '. It is kept in this browser only; you can turn this off in the menu at the top right': '。数据只存在本机浏览器里，可在右上角的菜单中关闭',
       'Uses the test settings of the comparison plot, for every parameter column shown in the tables': '按“参数对比图”里的检验设置，对表格中显示的每个参数做检验',
       'Choose the channel below. Add the same file again to import another channel.': '下方选择本次要导入的通道。需要其他通道时，可再次添加同一个文件。',
       'Saved automatically after each change. Kept in this browser only, never uploaded.': '有改动时自动保存。只存在这台电脑的浏览器里，不会上传。',
@@ -2962,7 +3055,7 @@ const LOCALES = {
       'Switch grouping set': '切换分组方案',
       'New group in this colour{~0}': '用这个颜色新建分组{~0}',
       'New group with colour {0}': '用颜色 {0} 新建分组',
-      'Anyone with the link can edit. Data, groups, names, colours, exclusions and analysis settings are shared; the selection, active grouping set, zoom and page view belong to each person.': '持链接者均可编辑，共享数据、分组、名称、颜色、排除标记和分析参数。选孔、当前方案、缩放和页面视图由每人独立控制。',
+      'Anyone with the link can edit. Data, groups, names, colours, exclusions and analysis settings are shared. Everyone follows the same selected wells and current dataset; zoom, language and page view remain personal.': '持链接者均可编辑，共享数据、分组、名称、颜色、排除标记和分析参数。所有人跟随同一组选中孔和当前数据集，缩放、语言和页面视图仍各自控制。',
       'Changes synchronize automatically. When two people change the same thing, your draft is kept and you choose. While disconnected the draft exists on this page only, so download it before closing. Undo applies to your own synchronized steps.': '修改自动同步；同一处发生冲突时保留你的草稿，由你选择。断线时草稿仅保留在本页，关闭前请下载。撤销只针对自己已同步的操作。',
       'A room keeps using the app version it was created with, and the initial data is saved as the initial version. After 7 days all room data and saved versions are deleted; download the project to keep it.': '房间固定使用创建时的程序版本，初始数据另存为初始版本。7 天后删除全部房间数据与保存版本，需要长期保存时请下载项目。',
       'When ticked, the per-well table, the group statistics and the comparison plot use only the wells selected on the plate; all wells while nothing is selected': '勾选后，每孔参数、分组统计和参数对比图只用孔板上选中的孔；没有选孔时用全部孔',
@@ -3113,6 +3206,61 @@ const LOCALES = {
       'Clear axis settings': '清空坐标轴设置',
       'Range': '范围',
       'Selected wells ({0})': '选中的 {0} 孔',
+      'Selected wells with data ({0})': '选中的有数据的 {0} 孔',
+      'Apply to': '适用于',
+      'all datasets alike': '所有实验统一',
+      'each dataset separately': '每个实验单独',
+      'Whether the analysis settings are the same for every dataset or each dataset has its own': '分析设置是所有实验用同一套，还是每个实验各用各的',
+      'All datasets will use the settings of “{0}”; the settings of the other datasets are replaced.': '所有实验都将使用“{0}”的设置，其他实验单独的设置会被替换。',
+      'Use for all': '全部使用',
+      'Replay': '回放',
+      'Stop': '停止',
+      'Replay the run': '回放整个实验',
+      'Replay {0}': '回放 {0}',
+      'positive {0}/{1}': '阳性 {0}/{1}',
+      'neg. control {0}/{1}': '阴性对照 {0}/{1}',
+      'set to {0}': '已设为 {0}',
+      'cut-off {0}': '截止 {0}',
+      'cut-off set to {0}': '截止已设为 {0}',
+      '(was: {0})': '（原：{0}）',
+      'release to set · Esc cancels': '松开即设定 · Esc 取消',
+      'Enter sets · Esc cancels': 'Enter 设定 · Esc 取消',
+      'release: no change': '松开不改变',
+      'baseline + {0}': '每孔基线 + {0}',
+      'baseline × {0}': '每孔基线 × {0}',
+      '≈ {0} (differs per well)': '≈ {0}（各孔不同）',
+      'no cut-off': '不设截止',
+      'up to {0}': '到 {0}',
+      '{0}: {1} positive / {2} wells': '{0}：阳性 {1} / {2} 孔',
+      '{0} wells turn positive — click to select them': '{0} 孔由阴性变阳性，点一下选中',
+      '{0} wells turn negative — click to select them': '{0} 孔由阳性变阴性，点一下选中',
+      'hold and drag': '按住拖动',
+      'Drag along the time axis and let go to set the cut-off': '沿时间轴左右拖动，松开就设为截止时间',
+      'Drag along the y-axis and let go to set the threshold': '沿纵轴上下拖动，松开就设为阈值',
+      'Drag the threshold on the Signal, F − F0 or F / F0 axis': '阈值请在信号值、F−F0 或 F/F0 纵轴上拖',
+      '↕ Hold the dashed horizontal line (threshold) and drag; release sets it (Ctrl+Z undoes)': '↕ 按住虚线横线（阈值）上下拖，松开就设定（Ctrl+Z 可撤销）',
+      '↔ Hold the dashed vertical line (cut-off) and drag; at the right end = no cut-off': '↔ 按住虚线竖线（截止时间）左右拖，拖到最右边 = 不设',
+      'Experiment notes': '实验备注',
+      'Experiment notes · {0}': '实验备注 · {0}',
+      'Experiment notes: none — click to add': '实验备注：未填写，点击添加',
+      'For example: date, sample source, reagent lot, operator, instrument settings…': '例如：日期、样本来源、试剂批号、操作人、仪器条件……',
+      'Kept in this browser automatically; written into Excel exports and reports; use “Save project” to take it to another computer': '自动保存在这个浏览器里；导出 Excel 和报告时会写上；要带到别的电脑请“保存项目”',
+      'Not saved automatically: use “Save project” before closing the page': '没有自动保存：关闭页面前请“保存项目”',
+      'Not shared with the room and not kept after a reload: use “Save project” to keep them': '不会共享到房间，刷新后也不保留；要保留请“保存项目”',
+      'Close “{0}”? Its experiment notes will be closed too (use “Save project” first to keep them).': '关闭“{0}”？它的实验备注也会一起关闭（先“保存项目”可以保留）。',
+      'Drag the threshold line': '拖动阈值线',
+      'Hold the dashed horizontal line (or the y-axis) and drag; release sets the threshold in the method of the y-axis: signal → fixed value, F − F0 → baseline + increment, F / F0 → baseline × factor (not on the % axis); Ctrl+Z undoes it': '按住虚线横线（或纵轴）上下拖，松开就按纵轴设阈值：信号值→固定值，F−F0→每孔基线 + 增量，F/F0→每孔基线 × 倍数（% 纵轴不能拖）；Ctrl+Z 可撤销',
+      'Drag the cut-off line': '拖动截止线',
+      'Hold the dashed vertical line (or the time axis) and drag; release sets the cut-off; at the right end = no cut-off. “Replay” runs it through the run once and sets nothing': '按住虚线竖线（或时间轴）左右拖，松开就设为截止时间；拖到最右边 = 不设。“回放”让它从头走一遍，不改设置',
+      'Threshold line (drag to set)': '阈值线（可拖动）',
+      'Cut-off line (drag to set)': '截止线（可拖动）',
+      'Max-slope tangent': '最大斜率切线',
+      'Max-slope tangent / fitted curve': '最大斜率切线 / 拟合曲线',
+      'Marks of each well: drawn for up to 12 curves; with more, for the curve under the pointer': '每孔标记：曲线不超过 12 条时画出；更多时只画鼠标所指的那条',
+      'Show all': '全部显示',
+      'Hide all': '全部隐藏',
+      'Tab to an axis': 'Tab 到坐标轴',
+      'Arrow keys, PageUp / PageDown, Home / End try a value; Enter sets; Esc goes back; Space replays (time axis)': '方向键、PageUp / PageDown、Home / End 试值；Enter 设定；Esc 返回；空格键回放（时间轴）',
       'All {0} wells with data': '全部有数据的 {0} 孔',
       'Replicate layout': '复孔排列',
       'Down columns: every': '竖排：同一列每',
@@ -3167,6 +3315,7 @@ const LOCALES = {
       'the values are all equal or too few': '数值全部相同或太少',
       'it needs at least two groups with two or more values and some spread': '需要至少两个各有 2 个以上数值且组内有差异的组',
       ' ({0} of them stopped being read early, cannot be ranked and are left out)': '（其中 {0} 个孔的读数提前结束，无法排序，未计入）',
+      'The wells that did not rise ({0}) cannot be ranked here: a measured time is later than the time they were watched for (a cut-off time, for example). The U test compares only the wells that rose.': '没起峰的 {0} 个孔在这里无法排序：有测得的时间晚于这些孔被观察到的时间（比如设了截止时间）。U 检验只比较了起峰的孔。',
       'cycles|{0} wells × {1} readings{2} · Reading interval required': '{0} 个孔 × {1} 个循环{2} · 待填写读数间隔',
       ' · interval {0}': ' · 间隔 {0}',
       '+ Add the other channel': '＋ 同时导入其余 1 个通道',
@@ -3974,6 +4123,28 @@ function rowWells(row) {
   }
   return out;
 }
+/** A header that mixes plain well ids with ids that carry a name ("A1 NC", "A2 PC", "A3", ...: this app's own table of
+    curves when only some wells are named): the named cells are wells of the same table and their tags sample names.
+    Only when no well id comes twice and every such column holds numbers below the header; anything else is left to
+    the other rules (tags as channels). `wells`: rowWells() of line r. */
+function withNamedWells(T, r, wells) {
+  const row = T[r] || [];
+  if (!wells.length || (wells.duplicates || []).length) return wells;
+  const have = new Set(wells.map(w => w.id)), plain = new Set(wells.map(w => w.i)), named = [];
+  for (let c = 0; c < row.length; c++) {
+    if (plain.has(c)) continue;
+    const w = parseWellTagged(row[c]);
+    if (!w || !w.tag) continue;
+    if (have.has(w.id)) return wells;
+    if (![1, 2, 3].some(k => { const v = (T[r + k] || [])[c]; return typeof v === 'number' || (typeof v === 'string' && NUM_RE.test(v.trim())); })) continue;
+    have.add(w.id);
+    named.push({ i: c, id: w.id, r: w.r, c: w.c, name: w.tag });
+  }
+  if (!named.length) return wells;
+  const out = wells.concat(named).sort((a, b) => a.i - b.i);
+  out.duplicates = [];
+  return out;
+}
 /** Header cells with tagged well ids (see parseWellTagged), sorted into the groups that become data blocks:
     - one tag for all wells, or the same wells under several tags: the tags are channels, one group per tag;
     - every well once, with different tags: the tags are sample names, one group with all wells.
@@ -4077,9 +4248,15 @@ function hasFollowingData(T, from, valid, boundary) {
   return false;
 }
 
+/** What a column of times is labelled with: the text in it from the header line (r0) down to the first reading (r1).
+    Only when there is none, the nearest text within three lines above the header: a label written over it. A title
+    or a remark above a header that has its own label ("read every 15 min" over "Time (h)", "42 °C" over "Time")
+    says nothing about that column: it must not set its unit or pass it off as a temperature. */
 function labelsAround(T, r0, r1, c) {
+  const text = r => { const v = T[r] && T[r][c]; return v != null && typeof v === 'string' && !parseTimeCell(v) ? v : null; };
   const out = [];
-  for (let r = Math.max(0, r0 - 3); r <= r1; r++) { const v = T[r] && T[r][c]; if (v != null && typeof v === 'string' && !parseTimeCell(v)) out.push(v); }
+  for (let r = r0; r <= r1; r++) { const v = text(r); if (v !== null) out.push(v); }
+  if (!out.some(v => v.trim())) for (let r = r0 - 1; r >= Math.max(0, r0 - 3); r--) { const v = text(r); if (v !== null && v.trim()) { out.unshift(v); break; } }
   return out.join(' | ');
 }
 function scanTimeColumn(T, from, c, wells) {
@@ -4103,7 +4280,7 @@ function scanTimeColumn(T, from, c, wells) {
       if (!kind || tc.kind !== 'num') kind = tc.kind;
       if (first == null) first = tc.v;
     } else if (start < 0) {
-      if (++skipped > 8) return null;
+      if (wellsHeader(row, wells) || ++skipped > 8) return null;
     } else if (!emptyTableRow(row)) {
       if (hasVal && !boundary(row) && hasFollowingData(T, rr, valid, boundary)) { invalidRows.push(rr); end = rr + 1; }
       else break;
@@ -4119,10 +4296,18 @@ function scanDataRows(T, from, wells) {
     let vals = 0;
     for (const w of wells) if (isVal(row[w.i])) vals++;
     if (vals >= Math.max(1, wells.length * 0.5)) { if (start < 0) start = rr; end = rr + 1; cnt++; }
-    else if (start < 0) { if (++skipped > 8) return null; }
+    else if (start < 0) { if (wellsHeader(row, wells) || ++skipped > 8) return null; }
     else if (!emptyTableRow(row)) break;
   }
   return cnt >= 2 ? { start, end, cnt } : null;
+}
+/** Whether a line between a header and its first reading is itself a header of wells in those columns. Then the
+    line taken for the header was something else (a remark that names a few wells, sample names that look like well
+    ids), and the table belongs to this line: no block from the one above. */
+function wellsHeader(row, wells) {
+  let n = 0;
+  for (const w of wells) if (parseWell(row[w.i])) n++;
+  return n >= Math.max(2, wells.length * 0.5);
 }
 const CHANNEL_STRONG = /raw\s*data|\(\s*\d{3}(-\d+)?\s*\/\s*\d{3}(-\d+)?\s*\)|\b\d{3}\s*\/\s*\d{3}\b|read\s*\d+\s*:\s*\d|ex(citation)?\s*[:=]?\s*\d{3}|em(ission)?\s*[:=]?\s*\d{3}|\d{3}\s*nm|\bod\s*\d{3}/i;
 /** Look upward from row `limit` (original orientation) for a measurement/channel label. */
@@ -4153,6 +4338,7 @@ function detectCols(T, orient, skip) {
     { const row = T[r] || []; let seen = 0, c = 0; for (; c < row.length && seen < 4; c++) { const v = row[c]; if (v == null || v === '') continue; if (typeof v !== 'number' && !NUM_RE.test(String(v).trim())) break; seen++; } if (seen >= 4) continue; }
     let wells = rowWells(T[r]), split = 0;
     if (wells.length < 2 && (wells.duplicates || []).length) { wells = []; wells.duplicates = []; }      // one id over and over: a word ("M9"), not wells
+    wells = withNamedWells(T, r, wells);
     if (wells.length + (wells.duplicates || []).length < 2 && r + 1 < T.length) {
       const sw = splitWells(T[r], T[r + 1]);
       if (sw.length + (sw.duplicates || []).length >= 2) { wells = sw; split = 1; }
@@ -5324,6 +5510,10 @@ function plateContext(t, wells, set, roles) {
       const m = vals.reduce((a, b) => a + b, 0) / vals.length;
       const sd = Math.sqrt(vals.reduce((a, b) => a + (b - m) * (b - m), 0) / (vals.length - 1));
       ctx.negMean = m; ctx.negSd = sd; ctx.negN = nw.length; ctx.negThr = m + set.thrK * sd;
+      // A control well that rises by itself raises the mean and, far more, the SD of the pooled readings: the
+      // threshold of the whole plate goes out of reach and every well reads negative. It is said, not corrected.
+      const own = Object.assign({}, set, { thrMode: 'sd' });
+      if (nw.some(w => analyzeWell(t, w.y, own, { blank: ctx.blank }).positive)) ctx.warnings.push('A negative-control well rises by itself, which lifts the threshold of the whole plate: check the negative controls (exclude a well that is contaminated)');
     } else ctx.warnings.push('The threshold is “negative-control mean + k·SD” but no negative-control group is set (or it has no data); using well baseline + k·SD instead');
   }
   if (set.thrMode === 'pct') {
@@ -5369,7 +5559,7 @@ function analyzeWell(t, y, set, ctx) {
   } else if (mode === 'neg') R.thr = ctx.negThr;
   else if (mode === 'fixed') R.thr = set.thrFixed;
   else if (mode === 'add') R.thr = R.F0 + set.thrAdd;
-  else if (mode === 'fold') R.thr = R.F0 * set.thrFold;
+  else if (mode === 'fold') R.thr = R.F0 > 0 ? R.F0 * set.thrFold : NaN;      // (a baseline of zero or less has no multiple: no threshold)
   else if (mode === 'pct') R.thr = R.F0 + (set.thrPct / 100) * (isFinite(ctx && ctx.maxDF) ? ctx.maxDF : R.dF);
   const cx = isFinite(R.thr) ? crossing(tt, s, R.thr, set.sustain) : null;
   const cutoff = set.cutoff != null && isFinite(set.cutoff) ? set.cutoff : Infinity;
@@ -5440,11 +5630,13 @@ function analyzeWell(t, y, set, ctx) {
 }
 /** Median time to an event when some wells never showed it while they were watched (right-censored at the times in
     `censored`): the Kaplan–Meier median, the time by which half of the wells had their event. A level stretch at exactly
-    one half gives the middle of that stretch, as an ordinary median does. `reached` is false when fewer than half of
-    the wells are known to have had the event: the median is then later than `beyond`, the longest time a well was watched. */
+    one half gives the middle of that stretch, as an ordinary median does. `reached` is false when the median is not
+    known: it is then later than `after`. With more than half of the wells without the event that is `beyond`, the
+    longest time a well was watched; with exactly half of them it is only the middle between the last event and the
+    time those wells were watched for (two wells at 20 h and 22 h, two still flat at 48 h: later than 35 h, not 48 h). */
 function kmMedian(times, censored) {
   const ev = finiteVals(times).sort((a, b) => a - b), ce = finiteVals(censored).sort((a, b) => a - b);
-  const out = { n: ev.length + ce.length, events: ev.length, median: NaN, reached: false, beyond: NaN, min: ev.length ? ev[0] : NaN, max: ev.length ? ev[ev.length - 1] : NaN };
+  const out = { n: ev.length + ce.length, events: ev.length, median: NaN, reached: false, beyond: NaN, after: NaN, min: ev.length ? ev[0] : NaN, max: ev.length ? ev[ev.length - 1] : NaN };
   if (!out.n) return out;
   out.beyond = Math.max(ev.length ? ev[ev.length - 1] : -Infinity, ce.length ? ce[ce.length - 1] : -Infinity);
   let atRisk = out.n, surv = 1, i = 0, j = 0, half = NaN;
@@ -5458,6 +5650,8 @@ function kmMedian(times, censored) {
     if (surv < 0.5 - 1e-12) { out.median = t; out.reached = true; return out; }
     if (Math.abs(surv - 0.5) <= 1e-12) half = t;
   }
+  while (j < ce.length && ce[j] < half) j++;                            // (those still watched after the last event)
+  out.after = isFinite(half) ? (half + (j < ce.length ? ce[j] : out.beyond)) / 2 : out.beyond;
   return out;
 }
 function stats(vals) {
@@ -6424,6 +6618,7 @@ const arrIds = new WeakMap(), resSource = new WeakMap();
 let arrIdN = 0;
 const arrId = a => { let k = arrIds.get(a); if (!k) arrIds.set(a, (k = ++arrIdN)); return k; };
 function ensureAnalysis(ds) {
+  const set = setOf(ds);                 // (each dataset its own settings: this dataset's)
   const key = ds.ver + '|' + S.setVer;
   if (ds.res && ds.resKey === key) return ds.res;
   const wl = dataWells(ds);
@@ -6432,16 +6627,16 @@ function ensureAnalysis(ds) {
   // "% of the largest amplitude" threshold, every usable well
   const tag = ids => wl.filter(w => !w.excluded && (!ids || ids.has(w.id))).map(w => w.id + ':' + arrId(w.y)).join(',');
   const sig = [S.setVer, arrId(ds.t), roles.blank || '', roles.blank && roles.blankIds ? tag(roles.blankIds) : '',
-    S.set.thrMode === 'neg' ? (roles.neg || '') + '=' + (roles.neg && roles.negIds ? tag(roles.negIds) : '') : '',
-    S.set.thrMode === 'pct' ? tag(null) : ''].join('|');
+    set.thrMode === 'neg' ? (roles.neg || '') + '=' + (roles.neg && roles.negIds ? tag(roles.negIds) : '') : '',
+    set.thrMode === 'pct' ? tag(null) : ''].join('|');
   const same = !!ds.ctx && ds.ctxSig === sig;
-  const ctx = same ? ds.ctx : C.plateContext(ds.t, wl, S.set, roles);
+  const ctx = same ? ds.ctx : C.plateContext(ds.t, wl, set, roles);
   const old = same ? ds.res : null;
   const res = {};
   for (const w of wl) {
     if (w.excluded) { res[w.id] = { excluded: true }; continue; }
     const r = old && old[w.id];
-    res[w.id] = r && resSource.get(r) === w.y ? r : C.analyzeWell(ds.t, w.y, S.set, ctx);
+    res[w.id] = r && resSource.get(r) === w.y ? r : C.analyzeWell(ds.t, w.y, set, ctx);
     resSource.set(res[w.id], w.y);
   }
   ds.res = res; ds.ctx = ctx; ds.ctxSig = sig; ds.resKey = key;
@@ -6488,6 +6683,7 @@ function pushUndo(ds) {
 }
 function restoreSnap(ds, snap) {
   const o = JSON.parse(snap);
+  if (o.k === 'set') { Object.assign(S.set, o.s); S.setVer++; return; }      // settings set from the chart's lines
   for (const [id, name, color, excl] of o.w) { const w = ds.wells[id]; if (!w) continue; w.name = name; w.color = color; w.excluded = excl; }
   ds.sets = o.sets; ds.roles = o.r;
   loadSet(ds, clamp(o.gs || 0, 0, ds.sets.length - 1));
@@ -6499,13 +6695,13 @@ function updateUndoButtons() {
   $('#btnUndo').disabled = !ds || !ds.undo.length;
   $('#btnRedo').disabled = !ds || !ds.redo.length;
 }
-function undo() { if (COLLAB.active) { COLLAB.undo(); return; } const ds = curDS(); if (!ds || !ds.undo.length) return; ds.redo.push(snapshot(ds)); restoreSnap(ds, ds.undo.pop()); invAll(); toast('Undone'); }
-function redo() { if (COLLAB.active) { COLLAB.redo(); return; } const ds = curDS(); if (!ds || !ds.redo.length) return; ds.undo.push(snapshot(ds)); restoreSnap(ds, ds.redo.pop()); invAll(); toast('Redone'); }
+function undo() { if (COLLAB.active) { COLLAB.undo(); return; } const ds = curDS(); if (!ds || !ds.undo.length) return; const s = ds.undo.pop(); ds.redo.push(counterSnap(ds, s)); restoreSnap(ds, s); tbUndone(s); invAll(); toast('Undone'); }
+function redo() { if (COLLAB.active) { COLLAB.redo(); return; } const ds = curDS(); if (!ds || !ds.redo.length) return; const s = ds.redo.pop(); ds.undo.push(counterSnap(ds, s)); restoreSnap(ds, s); tbUndone(s); invAll(); toast('Redone'); }
 
 /* ---------- render scheduler ---------- */
 const dirty = new Set();
 let rafId = 0;
-function inv() { for (const p of arguments) dirty.add(p); if (!rafId) rafId = requestAnimationFrame(flush); COLLAB.schedule(); }
+function inv() { for (const p of arguments) dirty.add(p); if (!rafId) rafId = requestAnimationFrame(flush); COLLAB.selectionChanged(); COLLAB.schedule(); }
 function invAll() { inv('tabs', 'notice', 'plate', 'sel', 'groups', 'settings', 'chart', 'results'); }
 function flush() {
   rafId = 0;
@@ -6513,10 +6709,13 @@ function flush() {
   if (!S.shown) { S.shown = true; document.documentElement.classList.remove('pk-wait'); }      // hidden until this first drawing
   const d = new Set(dirty);
   dirty.clear();
+  if (syncSet()) for (const p of ['tabs', 'notice', 'plate', 'sel', 'groups', 'settings', 'chart', 'results']) d.add(p);   // another dataset's own settings
   const ds = curDS();
   document.body.classList.toggle('no-data', !ds);
+  $('#btnSettings').disabled = !ds;
   try {
     if (ds) ensureAnalysis(ds);
+    $('#btnSettings').classList.toggle('warn', !!(ds && ds.ctx && ds.ctx.warnings && ds.ctx.warnings.length));
     if (d.has('tabs')) renderTabs();
     if (d.has('notice')) renderNotice();
     updateUndoButtons();
@@ -6571,7 +6770,10 @@ const ICON = {
   up: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 13V3M4 7l4-4 4 4"/></svg>',
   down: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M4 9l4 4 4-4"/></svg>',
   copy: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M3 10.5V3.8C3 3.4 3.4 3 3.8 3h6.7"/></svg>',
-  dl: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8m0 0L5 7m3 3 3-3M2.5 11v2.5h11V11"/></svg>'
+  dl: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8m0 0L5 7m3 3 3-3M2.5 11v2.5h11V11"/></svg>',
+  play: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.2v9.6L12.6 8z"/></svg>',
+  stop: '<svg viewBox="0 0 16 16" fill="currentColor"><rect x="4" y="4" width="8" height="8" rx="1"/></svg>',
+  note: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M3.5 2h6.5l2.5 2.5V14h-9z"/><path d="M5.8 7h4.4M5.8 9.4h4.4M5.8 11.8h2.8"/></svg>'
 };
 function toast(msg, ms) {
   const el = document.createElement('div');
@@ -6740,8 +6942,11 @@ function pageSource() {
   if (!PAGE.markup || !PAGE.script || !tail.includes('id="pk-xlsx"')) return '';
   return '<!DOCTYPE html>\n' + top + '<html lang="en">\n<head>' + head + '</head>\n<body>' + PAGE.markup + tail + '\n</body>\n</html>\n';
 }
-/** Save the app as one HTML file. From a web address the file is fetched again, so the copy is the published file byte
-    for byte; opened from a local file, or when the server cannot be reached, it is put together from the page itself. */
+/** The offline copy of the published file leaves out the lines only the website uses. */
+const offlineCopy = html => html.replace(new RegExp('<' + 'script\\b[^>]*\\bdata-fow-telemetry\\b[^>]*>[\\s\\S]*?<' + '/script\\s*>\\n?', 'gi'), '');
+/** Save the app as one HTML file. From a web address the file is fetched again, so the copy is the published file (as
+    offlineCopy leaves it); opened from a local file, or when the server cannot be reached, it is put together from the
+    page itself. */
 async function downloadApp() {
   let data = null, version = APP.version;
   if (/^https?:$/.test(location.protocol)) {
@@ -6749,7 +6954,7 @@ async function downloadApp() {
       const r = await fetch(location.href.split('#')[0], { cache: 'force-cache', credentials: 'same-origin' });
       const buf = r.ok ? await r.arrayBuffer() : null;
       const m = buf && /<meta name="application-version" content="(v[\d.]+)">/.exec(new TextDecoder().decode(buf.slice(0, 4096)));
-      if (m && buf.byteLength > 2e5) { data = new Blob([buf], { type: 'text/html;charset=utf-8' }); version = m[1]; }
+      if (m && buf.byteLength > 2e5) { data = new Blob([offlineCopy(new TextDecoder().decode(buf))], { type: 'text/html;charset=utf-8' }); version = m[1]; }
     } catch (e) { /* offline, or the address does not serve the file again: the page itself will do */ }
   }
   if (!data) {
@@ -6801,7 +7006,7 @@ function sparkSvg(t, y, gmin, gmax, color, labelled) {
   const n = y.length;
   if (n < 2) return '';
   const t0 = t[0], span = (t[n - 1] - t0) || 1, ys = (gmax - gmin) || 1;
-  const top = labelled ? 11 : 4, bot = labelled ? 30 : 36;
+  const top = labelled ? 18 : 4, bot = labelled ? 37 : 36;     // labelled: below the line with the well's id and name
   const step = Math.max(1, Math.floor(n / 60));
   let pts = '';
   for (let i = 0; i < n; i += step) {
@@ -6840,6 +7045,8 @@ function renderPlate() {
   el.classList.toggle('p384', big);
   el.style.setProperty('--cols', cols);
   const mode = S.view.plateMode, res = ds.res || {};
+  // the positive/negative view follows a line of the chart while it moves (or replays)
+  const st = tbT(), pv = mode === 'call' && (TB.xOn || TB.yv != null);
   let gmin = Infinity, gmax = -Infinity, hk = null, hmin = Infinity, hmax = -Infinity;
   if (mode === 'spark' || mode === 'call') {
     for (const id of ds.order) { const w = ds.wells[id]; if (!w.y) continue; for (const v of w.y) if (isFinite(v)) { if (v < gmin) gmin = v; if (v > gmax) gmax = v; } }
@@ -6877,10 +7084,12 @@ function renderPlate() {
         if (col) { style += `--gc:${col};`; cls.push('gc'); }
       } else {
         if (col) { style = `--wbg:${rgba(col, dark ? 0.2 : 0.13)};--gc:${col};`; cls.push('gc'); }
-        if (mode === 'call' && rr && !rr.excluded && rr.n && rr.positive) style = `--wbg:${rgba(posC, dark ? 0.2 : 0.13)};--wbd:${rgba(posC, 0.55)};`;
+        const pz = pv ? previewPos(ds, w.id, rr, st) : !!(rr && !rr.excluded && rr.n && rr.positive);
+        // positive: the red tint, and the group's colour bar stays on top like on the other wells
+        if (mode === 'call' && pz) style = `--wbg:${rgba(posC, dark ? 0.2 : 0.13)};--wbd:${rgba(posC, 0.55)};` + (col ? `--gc:${col};` : '');
         if (w.y) inner = sparkSvg(ds.t, w.y, gmin, gmax, col || 'var(--ink-2)', !big);
-        if (mode === 'call' && rr && !rr.excluded && rr.n && rr.positive && !big) inner += '<span class="wcall" aria-label="Positive">+</span>';
-        if (!big) label = `<span class="wid">${w.id}</span>${w.name ? `<span class="wn" translate="no">${esc(w.name)}</span>` : ''}`;
+        if (mode === 'call' && pz && !big) inner += '<span class="wcall" aria-label="Positive">+</span>';
+        if (!big) label = `<span class="wl"><span class="wid">${w.id}</span>${w.name ? `<span class="wn" translate="no">${esc(w.name)}</span>` : ''}</span>`;
       }
       parts.push(`<div class="${cls.join(' ')}" data-w="${w.id}" style="${style}" role="gridcell" aria-selected="${ds.sel.has(w.id)}">${inner}${label}</div>`);
     }
@@ -6900,12 +7109,16 @@ function renderPlate() {
     foot.innerHTML = isFinite(hmin)
       ? `<span>${esc(plabel(hk))}</span><span class="mono">${esc(fmtAuto(hmin, PARAMS[hk].kind))}</span><span class="ramp" style="background:linear-gradient(90deg,${ramp})"></span><span class="mono">${esc(fmtAuto(hmax, PARAMS[hk].kind))}</span><span>“—” = no value (negative or excluded)</span>${hdiv > 1 ? `<span class="inwells">${L('In the wells: value ÷ {0}', hdiv === 1e3 ? '1000' : hdiv === 1e6 ? '10⁶' : '10⁹')}</span>` : hdiv < 1 ? `<span class="inwells">${L('In the wells: value × {0}', hdiv === 1e-3 ? '1000' : '10⁶')}</span>` : ''}`
       : `<span>${L('{~0}: no values to show', esc(plabel(hk)))}</span>`;
+  } else if (pv) {
+    const pos = dataWells(ds).filter(w => previewPos(ds, w.id, res[w.id], st)).length;
+    foot.innerHTML = `<span class="tbf"><b style="color:${posC}">+</b> ${esc(tbFootText(pos, nData))}</span><span>Calling rules: Analysis settings → Threshold &amp; positive call</span>`;
   } else if (mode === 'call') {
     const pos = dataWells(ds).filter(w => res[w.id] && res[w.id].positive).length;
     foot.innerHTML = `<span><b style="color:${posC}">+</b> ${L('{0} positive / {1} wells with data', pos, nData)}</span><span>Calling rules: Analysis settings → Threshold &amp; positive call</span>`;
   } else {
     foot.innerHTML = isFinite(gmin) ? `<span>Thumbnails share one y-axis</span><span class="mono">${esc(compact(gmin))} – ${esc(compact(gmax))}</span><span>Drag to select · Ctrl/⌘ to add · Shift for a range · click row/column headers · press 1–9 to put the selection in a group</span>` : '';
   }
+  tbPlateMarks(true);
 }
 function updatePlateSel() {
   const ds = curDS();
@@ -7017,6 +7230,7 @@ function setupPlate() {
     const next = new Set(drag.base);
     for (const x of rectIds(ds, drag.start, id)) next.add(x);
     ds.sel = next;
+    COLLAB.selectionChanged();
     updatePlateSel();
     renderSelInfo();
   }
@@ -7392,6 +7606,8 @@ function setupGroups() {
 /* ---------- settings ---------- */
 const SET_NUM = { tStart: 't', tEnd: 't', cutoff: 't', baselineN: 'int', smoothW: 'odd', thrK: 'f', thrFold: 'f', thrPct: 'f', thrFixed: 'f', thrAdd: 'f', sustain: 'int', lagPct: 'f', plateauPct: 'f', grpPosPct: 'f', slopeW: 'int' };
 function renderSettings() {
+  const sc = $('#setScope');
+  if (sc) { sc.value = eachOn() ? 'each' : 'all'; sc.disabled = COLLAB.active; }
   const ds = curDS();
   for (const k of Object.keys(C.DEFAULT_SETTINGS)) {
     const el = $('#s_' + k);
@@ -7446,6 +7662,7 @@ function onSetting(e) {
     } else v = el.value;
     S.set[k] = v;
     S.setVer++;
+    if (SET_STEP_KEYS.includes(k)) dropSetSteps();       // a typed value is never overwritten by an undo
     clearTimeout(setTimer);
     setTimer = setTimeout(() => inv('plate', 'groups', 'settings', 'chart', 'results'), e.type === 'input' ? 280 : 0);
   } else if (id === 'r_blank' || id === 'r_neg') {
@@ -7473,9 +7690,18 @@ function setupSettings() {
     d.hidden = !d.hidden;
     e.currentTarget.setAttribute('aria-expanded', String(!d.hidden));
   });
+  $('#setScope').addEventListener('change', e => {
+    const el = e.target, each = el.value === 'each';
+    if (!each && S.each && S.ds.length > 1) {
+      el.value = 'each';                    // until it is confirmed
+      confirmBox('Analysis settings', L('All datasets will use the settings of “{0}”; the settings of the other datasets are replaced.', esc(curDS() ? curDS().name : '')), 'Use for all', () => setScope(false));
+    } else setScope(each);
+  });
   $('#btnResetSet').addEventListener('click', () => {
     S.set = Object.assign({}, C.DEFAULT_SETTINGS);
     S.setVer++;
+    dropSetSteps();
+    if (S.each && curDS()) curDS().set = S.set;          // each dataset its own: the reset is this dataset's
     inv('plate', 'groups', 'settings', 'chart', 'results');
     toast('Analysis settings reset to defaults');
   });
@@ -7486,7 +7712,7 @@ function renderTabs() {
   $('#dsTabs').innerHTML = S.ds.map((ds, i) => {
     const n = dataWells(ds).length;
     return `<div class="ds-tab${i === S.cur ? ' on' : ''}" data-i="${i}" role="tab" tabindex="0" aria-selected="${i === S.cur}" title="${esc(L('{0}{1} (double-click to rename)', ds.file || ds.name, ds.sheet ? ' · ' + ds.sheet : ''))}">
-      <span class="nm" translate="no">${esc(ds.name)}</span>${ds.isDemo ? '<span class="demo">example</span>' : ''}<span class="meta">${n}×${ds.t.length}</span>
+      ${i === S.cur || ds.notes ? `<button class="nb${ds.notes ? ' has' : ''}" type="button" data-notes="${i}" data-i18n-keep="title" title="${esc(ds.notes ? ds.notes.slice(0, 300) : L('Experiment notes: none — click to add'))}" aria-label="${esc(L('Experiment notes'))}">${ICON.note}</button>` : ''}<span class="nm" translate="no">${esc(ds.name)}</span>${ds.isDemo ? '<span class="demo">example</span>' : ''}<span class="meta">${n}×${ds.t.length}</span>
       <button class="x" type="button" data-close="${i}" aria-label="${L('Close {0}', esc(ds.name))}">${ICON.x}</button></div>`;
   }).join('');
   fitTabs();
@@ -7511,13 +7737,18 @@ function closeDS(i) {
   const ds = S.ds[i];
   if (!ds) return;
   const go = () => {
-    S.ds.splice(i, 1);
+    const j = S.ds.indexOf(ds);          // (it may run after a dialog: the list can have changed meanwhile)
+    if (j < 0) return;
+    S.ds.splice(j, 1);
     if (S.cur >= S.ds.length) S.cur = S.ds.length - 1;
-    else if (i < S.cur) S.cur--;
+    else if (j < S.cur) S.cur--;
     S.zoom = null;
     invAll();
   };
-  if (ds.isDemo || !ds.undo.length) go();
+  // groups, colours and exclusions are work to lose also when no step of this session made them (a restored session)
+  const laidOut = () => allGroups(ds).length > 0 || ds.order.some(id => { const w = ds.wells[id]; return !!(w && (w.color || w.excluded)); });
+  if (ds.notes) confirmBox('Close dataset', L('Close “{0}”? Its experiment notes will be closed too (use “Save project” first to keep them).', esc(ds.name)), 'Close', go);
+  else if (ds.isDemo || !(dsEdited(ds) || laidOut())) go();
   else confirmBox('Close dataset', L('Close “{0}”? Unsaved names, groups and colours will be lost (use “Save project” first).', esc(ds.name)), 'Close', go);
 }
 function setupTabs() {
@@ -7528,7 +7759,8 @@ function setupTabs() {
     const t = e.target.closest('.ds-tab');
     if (t) switchDS(+t.dataset.i);
   });
-  box.addEventListener('keydown', e => { const t = e.target.closest('.ds-tab'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); switchDS(+t.dataset.i); } });
+  // (only with the tab itself in focus: its buttons and the box for a new name take their own keys)
+  box.addEventListener('keydown', e => { const t = e.target; if (t.classList.contains('ds-tab') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); switchDS(+t.dataset.i); } });
   box.addEventListener('dblclick', e => {
     const t = e.target.closest('.ds-tab');
     if (!t || e.target.closest('[data-close]')) return;
@@ -7550,7 +7782,7 @@ function renderNotice() {
   if (ds && ds.isDemo) {
     el.className = 'notice';
     // the example starts ungrouped, like imported data; while it is untouched its ready-made groups can be added
-    const offer = !ds.demoGrouped && !ds.loaded && !ds.undo.length && !ds.groups.length && !COLLAB.active;
+    const offer = !ds.demoGrouped && !ds.loaded && !dsEdited(ds) && !ds.groups.length && !COLLAB.active;
     el.innerHTML = '<span>This is simulated <b>example data</b>: try out the features, then close this tab or import your own file to replace it.</span><span class="spacer"></span>' +
       (offer ? `<button class="btn sm" type="button" data-demo-groups title="${L('Groups the wells by sample name and adds a second grouping set “By type”')}">${L('Add example groups')}</button>` : '') +
       '<button class="btn sm primary" type="button" data-imp>Import my data</button>';
@@ -7669,7 +7901,9 @@ function buildChartData(ds, dark) {
     if (src === 'selected') { if (ds.sel.size) ids = ds.order.filter(id => ds.sel.has(id)); else out.note = 'no wells selected, showing all'; }
     let wells = ids.map(id => ds.wells[id]).filter(w => w.y && !w.excluded);
     if (src === 'selected' && ds.sel.size && !wells.length && ids.some(id => ds.wells[id].y)) out.note = 'All selected wells are excluded';
-    const hiddenG = new Set(ds.groups.filter(g => !g.visible).map(g => g.id));
+    // Room participants can use different grouping sets. Their personal active
+    // set must not hide a curve from the selection everyone is discussing.
+    const hiddenG = new Set(COLLAB.active && src === 'selected' ? [] : ds.groups.filter(g => !g.visible).map(g => g.id));
     const nHidden = wells.filter(w => w.group && hiddenG.has(w.group)).length;
     if (nHidden) { wells = wells.filter(w => !(w.group && hiddenG.has(w.group))); out.note += (out.note ? L('; {0:well} hidden with their groups', nHidden) : L('{0:well} hidden with their groups', nHidden)); }
     const auto = wells.length <= 8;
@@ -7724,7 +7958,8 @@ function logTicks(a, b) {
 function tickFmt(ticks, step, log) {
   const mx = Math.max(...ticks.map(Math.abs));
   if (log || mx >= 10000) return v => compact(v);
-  const dec = step >= 1 ? 0 : Math.min(6, Math.ceil(-Math.log10(step) - 1e-9));
+  let dec = 0;                         // the decimals the step itself needs (0.25 and 2.5 as well as 0.2 and 5)
+  while (dec < 6 && Math.abs(step * 10 ** dec - Math.round(step * 10 ** dec)) > 1e-9 * Math.max(1, step * 10 ** dec)) dec++;
   return v => (dec ? v.toFixed(dec) : nf0.format(v));
 }
 /** Fixed axis settings in display units (x stored in hours, y per y-axis mode). */
@@ -7833,29 +8068,29 @@ function markerSvg(ds, s, sx, sy, logY, col, opts) {
   const tf = TF();
   const pt = (tt, v) => (isFinite(tt) && isFinite(v) && (!logY || v > 0) ? [sx(tt * tf), sy(v)] : null);
   let o = '';
-  if (opts && opts.thr && isFinite(r.thr)) {
+  if (opts && opts.thr && mkOn('thr') && isFinite(r.thr)) {
     const p = pt(ds.t[0], fn(r.thr)), q = pt(ds.t[ds.t.length - 1], fn(r.thr));
     if (p && q) o += `<line x1="${p[0].toFixed(1)}" y1="${p[1].toFixed(1)}" x2="${q[0].toFixed(1)}" y2="${q[1].toFixed(1)}" stroke="${s.color}" stroke-width="1" stroke-dasharray="2 4" opacity="0.9"/>`;
   }
-  if (r.maxSlope > 0 && (r.positive || !S.set.onlyPositive)) {
+  if (mkOn('tan') && r.maxSlope > 0 && (r.positive || !S.set.onlyPositive)) {
     const ta = r.tMaxSlope + (r.F0 - r.sMaxSlope) / r.maxSlope, tb = r.tMaxSlope + (r.Fmax - r.sMaxSlope) / r.maxSlope;
     const a = pt(ta, fn(r.F0)), b = pt(tb, fn(r.Fmax));
     if (a && b) o += `<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${s.color}" stroke-width="1.2" stroke-dasharray="5 3" opacity="0.85"/>`;
   }
-  if ((S.set.lagMethod === 'fit' || S.set.plateauMethod === 'fit') && r.fit && r.fit.ok) {
+  if (mkOn('tan') && (S.set.lagMethod === 'fit' || S.set.plateauMethod === 'fit') && r.fit && r.fit.ok) {
     const p = [r.fit.A1, r.fit.A2, r.fit.t0, r.fit.dt];
     const fy = Array.from(ds.t, x => fn(C.boltz(x, p)));
     o += `<path d="${linePath(Array.from(ds.t, x => x * tf), fy, sx, sy, logY, 1e9)}" fill="none" stroke="${col.ink}" stroke-width="1.1" stroke-dasharray="4 3" opacity="0.6"/>`;
   }
-  if (isFinite(r.tPlateau) && isFinite(r.plateauLevel)) {
+  if (mkOn('plat') && isFinite(r.tPlateau) && isFinite(r.plateauLevel)) {
     const p = pt(r.tPlateau, fn(r.plateauLevel));
     if (p) o += `<rect x="${(p[0] - 4.3).toFixed(1)}" y="${(p[1] - 4.3).toFixed(1)}" width="8.6" height="8.6" rx="1.5" fill="${s.color}" stroke="${col.surface}" stroke-width="2"/>`;
   }
-  if (isFinite(r.t50)) {
+  if (mkOn('t50') && isFinite(r.t50)) {
     const p = pt(r.t50, fn(r.level50));
     if (p) o += `<path d="M${p[0].toFixed(1)},${(p[1] - 5.5).toFixed(1)}l5.5,5.5l-5.5,5.5l-5.5,-5.5z" fill="${s.color}" stroke="${col.surface}" stroke-width="2"/>`;
   }
-  if (isFinite(r.lag) && isFinite(r.lagLevel)) {
+  if (mkOn('lag') && isFinite(r.lag) && isFinite(r.lagLevel)) {
     const p = pt(r.lag, fn(r.lagLevel));
     if (p) o += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="4.6" fill="${s.color}" stroke="${col.surface}" stroke-width="2"/>`;
   }
@@ -7949,22 +8184,25 @@ function drawChart(o) {
     P.push(`<path class="curve" data-id="${esc(s.id)}" d="${linePath(data.t, s.y, sx, sy, log, pw)}" stroke="${s.color}" stroke-width="${big ? s.width * 1.35 : s.width}"${s.dash ? ` stroke-dasharray="${s.dash}"` : ''} fill="none" stroke-linejoin="round" stroke-linecap="round"/>`);
     if (S.view.symbols) P.push(symbolsSvg(data.t, s.y, sx, sy, log, s.color, big ? 3.6 : 2.7, col.surface, dom));
   }
-  if (ds && data.kind === 'well' && S.view.yMode === 'sig' && o.markers) {
-    const gthr = S.set.thrMode === 'fixed' ? S.set.thrFixed : (S.set.thrMode === 'neg' && ds.ctx && isFinite(ds.ctx.negThr) ? ds.ctx.negThr : NaN);
-    if (isFinite(gthr) && (!log || gthr > 0)) {
-      const y = sy(gthr);
-      P.push(`<line x1="${m.l}" x2="${m.l + pw}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${col.muted}" stroke-width="1" stroke-dasharray="6 4"/>`);
-      P.push(`<text x="${m.l + pw - 6}" y="${(y - 5).toFixed(1)}" text-anchor="end" font-size="${fsLab - 1}" fill="${col.muted}">${esc(tr('Threshold'))} ${esc(fmtAuto(gthr))}</text>`);
+  // The threshold line of an exported figure is the one the screen shows (the line that is dragged there): one level
+  // that is the threshold of every curve on this y axis. Where every well has its own, the screen's "about ..." line
+  // is no threshold and stays on the screen.
+  const oneLevel = ds && tbYOk() ? tbInForce(ds) : null, levelShown = !!(oneLevel && oneLevel.exact && isFinite(oneLevel.v) && (!log || oneLevel.v > 0));
+  if (levelShown && o.markers && mkOn('thr')) {
+    const y = sy(oneLevel.v);
+    if (y >= m.t - 0.5 && y <= m.t + ph + 0.5) {
+      P.push(`<line class="tb-own" x1="${m.l}" x2="${m.l + pw}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${col.muted}" stroke-width="1" stroke-dasharray="6 4"/>`);
+      P.push(`<text class="tb-own" x="${m.l + pw - 6}" y="${(y - 5).toFixed(1)}" text-anchor="end" font-size="${fsLab - 1}" fill="${col.muted}">${esc(tr('Threshold'))} ${esc(tagText(oneLevel.v))}</text>`);
     }
   }
-  if (o.markers && S.set.cutoff != null) {
+  if (o.markers && mkOn('cut') && S.set.cutoff != null) {
     const x = sx(S.set.cutoff * tf);
-    P.push(`<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${m.t}" y2="${m.t + ph}" stroke="${col.muted}" stroke-width="1" stroke-dasharray="6 4"/><text x="${(x + 4).toFixed(1)}" y="${m.t + 12}" font-size="${fsLab - 1}" fill="${col.muted}">${esc(tr('Cut-off'))}</text>`);
+    P.push(`<line class="tb-own" x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${m.t}" y2="${m.t + ph}" stroke="${col.muted}" stroke-width="1" stroke-dasharray="6 4"/><text class="tb-own" x="${(x + 4).toFixed(1)}" y="${m.t + 12}" font-size="${fsLab - 1}" fill="${col.muted}">${esc(tr('Cut-off'))} ${esc(cutText(S.set.cutoff))}</text>`);
   }
   if (ds && data.kind === 'well' && o.markers && data.series.length <= 12) {
     const single = data.series.length === 1;
     P.push('<g class="mk">');
-    for (const s of data.series) P.push(markerSvg(ds, s, sx, sy, log, col, { thr: single && !['fixed', 'neg'].includes(S.set.thrMode) }));
+    for (const s of data.series) P.push(markerSvg(ds, s, sx, sy, log, col, { thr: single && !levelShown }));
     P.push('</g>');
   }
   P.push('</g>');
@@ -7991,16 +8229,21 @@ function drawChart(o) {
   P.push('</svg>');
   // Everything that follows the pointer (crosshair, emphasised curve, zoom box) is drawn in a second SVG laid over
   // the chart, so hovering never repaints the chart itself: with hundreds of curves that repaint is what made it lag.
-  const ov = big ? '' : `<svg xmlns="http://www.w3.org/2000/svg" class="chart chart-ov" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true"><defs><clipPath id="${cid}o"><rect x="${m.l}" y="${m.t - 2}" width="${pw + 2}" height="${ph + 4}"/></clipPath></defs><g class="hlc" clip-path="url(#${cid}o)"></g><g class="ov"></g><rect class="zb" x="0" y="0" width="0" height="0" visibility="hidden"/></svg>`;
+  const ov = big ? '' : `<svg xmlns="http://www.w3.org/2000/svg" class="chart chart-ov" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true"><defs><clipPath id="${cid}o"><rect x="${m.l}" y="${m.t - 2}" width="${pw + 2}" height="${ph + 4}"/></clipPath></defs><g class="scr"></g><g class="hlc" clip-path="url(#${cid}o)"></g><g class="ov"></g><rect class="zb" x="0" y="0" width="0" height="0" visibility="hidden"/></svg>`;
   return { svg: P.join(''), ov, sx, sy, m, pw, ph, dom, W, H, labels, crowded };
 }
 
 function renderChart() {
   const ds = curDS();
   const box = $('#chartBox');
-  $$('#srcSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === S.view.source));
+  if (COLLAB.active) S.view.source = 'selected';
+  $$('#srcSeg button').forEach(b => {
+    b.classList.toggle('on', b.dataset.v === S.view.source);
+    b.disabled = COLLAB.active && b.dataset.v !== 'selected';
+    if (COLLAB.active) b.title = L('Shared rooms use the same selected-well curves for everyone');
+  });
   $('#yMode').value = S.view.yMode;
-  $('#logY').checked = S.view.logY; $('#showSmooth').checked = S.view.smooth; $('#showMarkers').checked = S.view.markers;
+  $('#logY').checked = S.view.logY; $('#showSmooth').checked = S.view.smooth; mkButton();
   $('#bandMode').value = S.view.band; $('#showReps').checked = S.view.reps; $('#labelMode').value = S.view.labels;
   $$('.grp-only').forEach(n => { n.hidden = S.view.source !== 'groups'; });
   const csb = $('#chartSetBox');
@@ -8016,6 +8259,7 @@ function renderChart() {
     $('#legend').innerHTML = '';
     $('#chartInfo').textContent = '';
     CH.geo = null; CH.svg = null; CH.ovSvg = null;
+    renderTimeBar(null);
     return;
   }
   const W = Math.max(320, Math.floor(box.clientWidth - 8));
@@ -8028,6 +8272,962 @@ function renderChart() {
   $('#chartInfo').textContent = $('#chartInfo').title = info + (data.note ? ' · ' + tr(data.note) : '');
   renderLegend(ds, data, g);
   if (CH.hl) chartHighlight(CH.hl);
+  renderTimeBar(g);
+}
+
+/* ---------- the threshold and cut-off lines on the chart ---------- */
+/* Two dashed lines on the chart are the two thresholds of the positive call: the horizontal one the signal threshold
+   (in the method that matches the y-axis: signal -> fixed value, F - F0 -> baseline + increment, F / F0 -> baseline x
+   factor; none on the % axis, where each curve is scaled to its own rise), the vertical one the cut-off time (at the
+   end of the run while there is none). Hold a line - or its axis - and drag; letting go sets it. A click, a sideways
+   gesture, Esc while held, or letting go where it was change nothing; on a touch screen a finger is held still a
+   moment first. What is set is a step in the page's undo history (Ctrl+Z). While a line moves, and a few seconds after
+   it was set, a small readout beside it gives the wells positive and those whose call changes (dashed rings on the
+   plate), and the curves negative then fade. "Replay" runs the cut-off line through the run once and sets nothing.
+   The chart's own threshold and cut-off lines (kept in exports) are hidden on screen: these are drawn in their place. */
+const TB = {
+  ds: null, geo: null, fr: null, raf: 0, last: 'y',
+  drag: null, hover: null, hoverV: null, focus: null,
+  yv: null,                       // the level shown while the threshold line moves (null: at rest)
+  xOn: false, xv: null,           // the cut-off line moves or replays: xv = its time (null: no cut-off)
+  kbd: null, play: 0,             // kbd: 'x' / 'y' while a value tried with the keys waits for Enter
+  ymode: null, yc: null, ym: null,
+  refRes: null, msg: null, msgT: 0, upIds: [], downIds: [],
+  fsvg: null, fmap: null, faded: new Set(), rings: new Map(), platePos: '',
+  hs: null, hintT: 0, hintOut: 0, hintShown: false, hintDone: false
+};
+
+/* What the lines set goes into the undo history of the dataset shown, as {"k":"set","s":{...}} beside the usual
+   snapshots of names, groups and colours; a value typed into the settings drops these steps (an undo never
+   overwrites what was typed). */
+const SET_STEP_KEYS = ['thrMode', 'thrFixed', 'thrAdd', 'thrFold', 'thrPct', 'cutoff'];
+const isSetStep = s => typeof s === 'string' && s.startsWith('{"k":"set"');
+function setStep() {
+  const o = {};
+  for (const k of SET_STEP_KEYS) o[k] = S.set[k] === undefined ? null : S.set[k];
+  return JSON.stringify({ k: 'set', s: o });
+}
+/** Names, groups or colours of the dataset were changed (settings steps from the chart's lines do not count). */
+const dsEdited = d => !!d.undo && d.undo.some(s => !isSetStep(s));
+/** The settings were replaced from elsewhere (a shared room): what the lines show is redrawn from them. */
+function tbSetElsewhere(was) { if (was && SET_STEP_KEYS.some(k => was[k] !== S.set[k])) tbUndone('{"k":"set"}'); }
+/** The step that takes back the step s (for redo after an undo, and the other way round). */
+function counterSnap(ds, s) { return isSetStep(s) ? setStep() : snapshot(ds); }
+function dropSetSteps() {
+  for (const d of S.ds) for (const st of [d.undo, d.redo]) if (st) for (let i = st.length - 1; i >= 0; i--) if (isSetStep(st[i])) st.splice(i, 1);
+  tbQuiet();
+}
+/** A line is about to set something: a step in the undo history of the dataset shown. The settings are shared by
+    every dataset, so steps kept with another dataset (which would undo this from there) go. */
+function tbChartStep(ds) {
+  S.dirty = true;
+  if (COLLAB.active || !ds) return;
+  if (!eachOn()) for (const d of S.ds) if (d !== ds) for (const st of [d.undo, d.redo]) if (st) for (let i = st.length - 1; i >= 0; i--) if (isSetStep(st[i])) st.splice(i, 1);
+  ds.undo.push(setStep());
+  if (ds.undo.length > 80) ds.undo.shift();
+  ds.redo.length = 0;
+}
+/** After Ctrl+Z / Ctrl+Y (s = the step taken back or done again). */
+function tbUndone(s) { if (isSetStep(s)) tbQuiet(); }
+/** Back to rest: no line moving, no readout, no replay. */
+function tbQuiet() {
+  if (TB.play) stopReplay();
+  TB.yv = null;
+  TB.xOn = false;
+  TB.xv = null;
+  TB.kbd = null;
+  TB.refRes = null;
+  TB.msg = null;
+  clearTimeout(TB.msgT);
+  if (TB.geo) scheduleScrubView();
+}
+
+/** Positive by the time t (hours): the call analyzeWell makes with the cut-off at t (its crossing time ttt does not
+    depend on the cut-off). */
+function posAt(r, t) {
+  return !!r && !r.excluded && r.n > 0 && isFinite(r.ttt) && r.ttt <= t && r.dF > 1e-9 * Math.max(Math.abs(r.F0), Math.abs(r.Fmax));
+}
+/** The cut-off the calls are previewed with while the vertical line moves (Infinity: none), else null. */
+const tbT = () => (TB.xOn ? (TB.xv == null ? Infinity : TB.xv) : null);
+/** A time of the run (hours) in the unit of the page: "23.0 h", "23.25 h", "35 min". */
+function tbTime(h) {
+  const v = h * TF();
+  return TU() === 'min' ? String(+v.toFixed(1)) + ' min' : v.toFixed(2).replace(/0$/, '') + ' h';
+}
+const cutText = v => (v == null ? Lc('cutoff', 'none') : tbTime(v));
+const tbSameCut = v => (S.set.cutoff == null ? v == null : S.set.cutoff === v);
+/** What a level of the y-axis means as a threshold, by the y-axis mode of the chart. */
+const Y_THR = {
+  sig: { mode: 'fixed', key: 'thrFixed', min: -Infinity, max: Infinity }, base: { mode: 'add', key: 'thrAdd', min: 0, max: Infinity },
+  fold: { mode: 'fold', key: 'thrFold', min: 1, max: Infinity }, norm: { mode: 'pct', key: 'thrPct', min: 0, max: 100 }
+};
+const yThr = () => Y_THR[S.view.yMode] || Y_THR.sig;
+/** The threshold line exists: not on the % axis, where each curve is scaled to its own rise (one line there is not
+    one threshold). */
+const tbYOk = () => S.view.yMode !== 'norm';
+/** How a threshold is set, in words: "fixed 52,000", "baseline + 12,000", "baseline × 1.5", ... */
+function methodText(s) {
+  switch (s.thrMode) {
+    case 'fixed': return L('fixed {0}', fmtAuto(+s.thrFixed));
+    case 'add': return L('baseline + {0}', fmtAuto(+s.thrAdd));
+    case 'fold': return L('baseline × {0}', String(+(+s.thrFold).toFixed(3)));
+    case 'pct': return L('baseline + {0}% of the largest amplitude', String(+(+s.thrPct).toFixed(2)));
+    case 'neg': return L('negative-control mean + {0}×SD', s.thrK);
+    default: return L('well baseline + {0}×SD', s.thrK);
+  }
+}
+/** A level of the y-axis as the threshold it would be. */
+function thrText(v) { const m = yThr(); return methodText({ thrMode: m.mode, [m.key]: v }); }
+/** A level as a short value of the y-axis. */
+function tagText(v) {
+  const m = S.view.yMode;
+  return m === 'fold' ? '×' + String(+v.toFixed(3)) : m === 'norm' ? String(+v.toFixed(2)) + '%' : fmtAuto(v);
+}
+function tbNiceStep(x) {
+  if (!(x > 0)) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(x))), f = x / p;
+  return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p;
+}
+/** A level of the y-axis rounded to a readable value, within what the method allows (null: none). */
+function tbRoundLevel(v) {
+  const g = TB.geo;
+  if (v == null || !isFinite(v) || !g) return null;
+  const m = yThr(), st = tbNiceStep((g.dom.y1 - g.dom.y0) / 200);
+  let x = S.view.logY ? +v.toPrecision(3) : +(Math.round(v / st) * st).toPrecision(12);
+  x = clamp(x, m.min, m.max);
+  return S.view.logY && !(x > 0) ? null : x;
+}
+/** The wells' processed curves for trying thresholds - what analyzeWell uses for its call (time window, blank, smoothing,
+    baseline, largest amplitude) - made once and reused while the level moves. Only wells that rise can be positive. */
+function yCache(ds) {
+  const key = ds.id + '|' + ds.ver + '|' + S.setVer + '|' + S.view.yMode;
+  if (TB.yc && TB.yc.key === key) return TB.yc;
+  const m = yThr(), sp = Object.assign({}, S.set, { thrMode: m.mode });
+  const roles = { blank: ds.roles.blank, neg: ds.roles.neg, blankIds: roleIds(ds, ds.roles.blank), negIds: roleIds(ds, ds.roles.neg) };
+  const ctx = C.plateContext(ds.t, dataWells(ds), sp, roles), wells = [];
+  for (const id of ds.order) {
+    const w = ds.wells[id];
+    if (!w.y || w.excluded) continue;
+    const p = C.prepWell(ds.t, w.y, sp, ctx.blank), n = p.tt.length;
+    if (n < 3) continue;
+    const N = Math.max(1, Math.min(sp.baselineN | 0 || 1, n));
+    let f0 = 0, k = 0;
+    for (let i = 0; i < N; i++) if (isFinite(p.yy[i])) { f0 += p.yy[i]; k++; }
+    f0 = k ? f0 / k : NaN;
+    const s = C.smooth(p.tt, p.yy, sp.smooth, sp.smoothW);
+    let iMax = 0;
+    for (let i = 1; i < n; i++) if (s[i] > s[iMax]) iMax = i;
+    const fm = s[iMax], dF = fm - f0;
+    if (dF > 1e-9 * Math.max(Math.abs(f0), Math.abs(fm))) wells.push({ id, tt: p.tt, s, f0, dF });
+  }
+  TB.ym = null;
+  return (TB.yc = { key, wells, maxDF: ctx.maxDF, sustain: sp.sustain, mode: m.mode });
+}
+/** When each rising well crosses the threshold at the level shown (absent: never), made once per level. */
+function yMap(ds) {
+  const c = yCache(ds), v = TB.yv;
+  if (TB.ym && TB.ym.c === c && TB.ym.v === v) return TB.ym.map;
+  const map = new Map();
+  for (const w of c.wells) {
+    const thr = c.mode === 'fixed' ? v : c.mode === 'add' ? w.f0 + v : c.mode === 'fold' ? (w.f0 > 0 ? w.f0 * v : NaN) : w.f0 + (v / 100) * (isFinite(c.maxDF) ? c.maxDF : w.dF);
+    const cx = isFinite(thr) ? C.crossing(w.tt, w.s, thr, c.sustain) : null;
+    if (cx) map.set(w.id, cx.t);
+  }
+  TB.ym = { c, v, map };
+  return map;
+}
+/** Positive with the level shown (if any) and the cut-off t shown (if any; Infinity: none): the call analyzeWell would
+    make with those settings. Without either, the call of the analysis. */
+function previewPos(ds, id, r, t) {
+  if (TB.yv == null) return t != null ? posAt(r, t) : !!(r && !r.excluded && r.n && r.positive);
+  if (!r || r.excluded || !(r.n > 0)) return false;
+  const x = yMap(ds).get(id), cut = t != null ? t : (S.set.cutoff != null && isFinite(S.set.cutoff) ? S.set.cutoff : Infinity);
+  return x != null && x <= cut;
+}
+/** Positive by the analysis from before the line moved (TB.refRes). */
+function refPos(id) { const r = TB.refRes && TB.refRes[id]; return !!(r && !r.excluded && r.n && r.positive); }
+/** The wells that count (data, not excluded, analysed), those positive as previewPos says, and the negative controls. */
+function previewCalls(ds, t) {
+  const res = ds.res || {}, negIds = ds.roles && ds.roles.neg ? roleIds(ds, ds.roles.neg) : null, pos = new Set();
+  let n = 0, negN = 0, negPos = 0;
+  for (const id of ds.order) {
+    const w = ds.wells[id], r = res[id];
+    if (!w.y || w.excluded || !r || !(r.n > 0)) continue;
+    n++;
+    const neg = !!(negIds && negIds.has(id));
+    if (neg) negN++;
+    if (previewPos(ds, id, r, t)) { pos.add(id); if (neg) negPos++; }
+  }
+  return { n, pos, negN, negPos };
+}
+/** The wells whose call changes against the analysis from before (up: turn positive, down: turn negative). */
+function tbCallDiff(ds, c) {
+  const up = [], down = [];
+  if (!TB.refRes || !c) return { up, down };
+  for (const id of ds.order) {
+    const w = ds.wells[id];
+    if (!w.y || w.excluded) continue;
+    const a = c.pos.has(id), b = refPos(id);
+    if (a && !b) up.push(id); else if (b && !a) down.push(id);
+  }
+  return { up, down };
+}
+/** Where the threshold of the analysis stands on this y-axis: its value when its method matches the axis, otherwise the
+    middle of the wells' own thresholds. */
+function currentLevel(ds) {
+  const m = yThr(), ym = S.view.yMode;
+  if (S.set.thrMode === m.mode && isFinite(S.set[m.key])) return S.set[m.key];
+  const res = ds.res || {}, vals = [];
+  for (const id of ds.order) {
+    const r = res[id];
+    if (!r || r.excluded || !isFinite(r.thr)) continue;
+    vals.push(ym === 'base' ? r.thr - r.F0 : ym === 'fold' ? r.thr / r.F0 : ym === 'norm' ? (r.dF > 0 ? (r.thr - r.F0) / r.dF * 100 : NaN) : r.thr);
+  }
+  return C.median(vals);
+}
+/** The threshold in force on this axis: exact when one value stands for every well (its method matches the axis, or
+    the negative-control threshold on the signal axis); otherwise the middle of the wells' own thresholds. */
+function tbInForce(ds) {
+  const m = yThr();
+  if (S.set.thrMode === m.mode && isFinite(S.set[m.key])) return { v: S.set[m.key], exact: true };
+  if (S.view.yMode === 'sig' && S.set.thrMode === 'neg' && ds.ctx && isFinite(ds.ctx.negThr)) return { v: ds.ctx.negThr, exact: true };
+  return { v: currentLevel(ds), exact: false };
+}
+const tbSameAsInForce = v => { const m = yThr(); return v != null && S.set.thrMode === m.mode && S.set[m.key] === v; };
+
+/** After the chart is drawn (g = what drawChart returned; null = no chart): bands over its axes, the lines' handles. */
+function renderTimeBar(g) {
+  const ds = curDS(), btn = $('#btnReplay'), layer = $('#tbLayer'), box = $('#chartBox');
+  if (TB.ds !== ds) { TB.ds = ds; TB.drag = null; tbQuiet(); }
+  if (TB.ymode !== S.view.yMode) { TB.ymode = S.view.yMode; TB.yv = null; if (TB.kbd === 'y') TB.kbd = null; }   // a level means something else on another axis
+  TB.geo = g;
+  const ok = !!(g && ds && ds.t && ds.t.length > 1 && CH.svg);
+  if (btn) btn.hidden = !ok;                // first: the button can wrap the card's head and move the chart
+  TB.fr = ok ? tbFrame(g) : null;
+  if (!TB.fr && (TB.drag || TB.xOn || TB.yv != null || TB.msg)) { TB.drag = null; tbQuiet(); }
+  if (layer) layer.hidden = !TB.fr;
+  if (box) box.classList.toggle('tb-on', !!TB.fr);
+  if (!TB.fr) { tbPlate(ds, null, null, null, false); return; }
+  const f = TB.fr, px = v => v.toFixed(1) + 'px', xb = $('#timeAxis'), yb = $('#thrAxis');
+  xb.style.cssText = `left:${px(f.L)};top:${px(f.B - 5 * f.k)};width:${px(f.R - f.L)};height:${px(31 * f.k)}`;
+  const yl = Math.max(0, g.m.l - 58);
+  yb.style.cssText = `left:${px(f.ox + yl * f.k)};top:${px(f.T)};width:${px((g.m.l - yl + 5) * f.k)};height:${px(f.B - f.T)}`;
+  xb.setAttribute('aria-label', L('Drag along the time axis and let go to set the cut-off'));
+  yb.setAttribute('aria-label', tbYOk() ? L('Drag along the y-axis and let go to set the threshold') : L('Drag the threshold on the Signal, F − F0 or F / F0 axis'));
+  yb.classList.toggle('off', !tbYOk());
+  xb.setAttribute('aria-valuemin', String(+(ds.t[0] * TF()).toFixed(4)));
+  xb.setAttribute('aria-valuemax', String(+(ds.t[ds.t.length - 1] * TF()).toFixed(4)));
+  updateScrubView();
+}
+/** Where the plot is inside #chartCard (px; the layer's coordinates) and the scale of the drawing. */
+function tbFrame(g) {
+  const card = $('#chartCard'), sr = CH.svg.getBoundingClientRect();
+  if (!card || !sr.width) return null;
+  const cr = card.getBoundingClientRect(), k = sr.width / g.W, ox = sr.left - cr.left - card.clientLeft, oy = sr.top - cr.top - card.clientTop;
+  return { k, ox, oy, L: ox + g.m.l * k, T: oy + g.m.t * k, R: ox + (g.m.l + g.pw) * k, B: oy + (g.m.t + g.ph) * k, W: g.W * k, narrow: $('#chartBox').clientWidth < 560 };
+}
+/** The value of an axis under the pointer: a time (hours) or a level of the y-axis. */
+function tbAxisValue(axis, e) {
+  const g = TB.geo, r = CH.svg && CH.svg.isConnected ? CH.svg.getBoundingClientRect() : null;
+  if (!g || !r || !r.width) return null;
+  const k = r.width / g.W;
+  if (axis === 'x') return (g.dom.x0 + clamp(((e.clientX - r.left) / k - g.m.l) / g.pw, 0, 1) * (g.dom.x1 - g.dom.x0)) / TF();
+  const f = clamp((g.m.t + g.ph - (e.clientY - r.top) / k) / g.ph, 0, 1);
+  return S.view.logY ? Math.pow(10, Math.log10(g.dom.y0) + f * (Math.log10(g.dom.y1) - Math.log10(g.dom.y0))) : g.dom.y0 + f * (g.dom.y1 - g.dom.y0);
+}
+/** A handle that moves a line: the line itself (band = false) or a band over its axis (band = true; it also takes the
+    keys once it has the focus by Tab). axis 'x' = the cut-off, 'y' = the threshold. */
+function wireDrag(el, axis, band) {
+  el.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || TB.drag) return;
+    e.preventDefault();                                    // no text selection, and the mouse does not give it the focus
+    if (axis === 'y' && !tbYOk()) return;
+    // a value being typed in the settings is committed first (its 'change' would otherwise come later and win)
+    const ae = document.activeElement;
+    if (ae && ae !== el && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName) && !$('#tbLayer').contains(ae)) ae.blur();
+    if (TB.play) stopReplay();
+    const had = document.activeElement === el;
+    TB.drag = { axis, el, id: e.pointerId, type: e.pointerType, x0: e.clientX, y0: e.clientY, t0: e.timeStamp, started: false, snapped: false };
+    try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    if (band && !had) setTimeout(() => { if (document.activeElement === el) el.blur(); }, 0);
+    scheduleScrubView();
+  });
+  el.addEventListener('pointermove', e => {
+    const d = TB.drag;
+    if (d && d.el === el && e.pointerId === d.id) {
+      if (!d.started) {
+        const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
+        if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+        // only a drag along the line's way counts, and on a touch screen a finger held still a moment first:
+        // a sideways gesture or a swipe sets nothing
+        if ((axis === 'y' ? Math.abs(dy) <= Math.abs(dx) : Math.abs(dx) < Math.abs(dy)) || (d.type === 'touch' && e.timeStamp - d.t0 < 300)) { tbCancelDrag(); return; }
+        d.started = true;
+        TB.last = axis;
+        TB.msg = null;
+        clearTimeout(TB.msgT);
+        TB.kbd = null;
+        TB.refRes = curDS().res;                           // the calls from before, for what changes
+        tbMarkUsed(axis);
+      }
+      if (axis === 'x') tbDragCut(e); else tbDragLevel(e);
+      return;
+    }
+    if (!d && e.pointerType !== 'touch') { TB.hover = { axis, band }; TB.hoverV = tbAxisValue(axis, e); scheduleScrubView(); }
+  });
+  const up = e => {
+    const d = TB.drag;
+    if (!d || d.el !== el || e.pointerId !== d.id) return;
+    if (e.type === 'pointercancel' || !d.started) { tbCancelDrag(); return; }
+    TB.drag = null;
+    try { el.releasePointerCapture(d.id); } catch (err) { /* ignore */ }
+    if (axis === 'y') { if (d.snapped || tbSameAsInForce(TB.yv)) tbRestY(); else tbApplyLevel(); }      // letting go sets it
+    else if (d.snapped || tbSameCut(TB.xv)) tbRestX(); else tbApplyCut();
+    scheduleScrubView();
+  };
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', up);
+  el.addEventListener('lostpointercapture', e => { const d = TB.drag; if (d && d.el === el && e.pointerId === d.id) tbCancelDrag(); });
+  el.addEventListener('pointerleave', () => { if (TB.hover && TB.hover.axis === axis && TB.hover.band === band) { TB.hover = null; TB.hoverV = null; scheduleScrubView(); } });
+  if (!band) return;
+  el.addEventListener('focus', () => { TB.focus = axis; scheduleScrubView(); });
+  el.addEventListener('blur', () => { if (TB.focus === axis) TB.focus = null; scheduleScrubView(); });
+  el.addEventListener('keydown', e => {
+    const ds = curDS(), g = TB.geo;
+    if (!ds || !g || !ds.t || ds.t.length < 2 || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === 'Escape' && TB.drag) tbCancelDrag();
+    else if (axis === 'x') {
+      const n = ds.t.length, cur = TB.xOn ? TB.xv : S.set.cutoff, i = cur == null ? n - 1 : nearestIdx(ds.t, cur);
+      const j = { ArrowLeft: i - 1, ArrowDown: i - 1, ArrowRight: i + 1, ArrowUp: i + 1, PageDown: i - 10, PageUp: i + 10, Home: 0, End: n - 1 }[e.key];
+      if (j != null) { tbKeyStart(ds, 'x'); setCutPreview(ds.t[clamp(j, 0, n - 1)], true); }          // the last reading: no cut-off
+      else if (e.key === 'Enter') { if (!TB.xOn || TB.play) return; tbApplyCut(); }
+      else if (e.key === ' ') { if (TB.play) stopReplay(); else startReplay(); }
+      else if (e.key === 'Escape') { if (TB.xOn || TB.msg || TB.yv != null) tbQuiet(); else return; }
+      else return;
+    } else {
+      const k = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: 10, PageDown: -10 }[e.key];
+      if (!tbYOk() && e.key !== 'Escape') return;
+      if (k != null) {
+        const iv = TB.yv != null ? TB.yv : tbInForce(ds).v;
+        const b = isFinite(iv) && (!S.view.logY || iv > 0) ? iv : S.view.logY ? Math.sqrt(g.dom.y0 * g.dom.y1) : (g.dom.y0 + g.dom.y1) / 2;
+        tbKeyStart(ds, 'y');
+        setLevel(S.view.logY ? b * Math.pow(1.05, k) : b + k * tbNiceStep((g.dom.y1 - g.dom.y0) / 100));
+      } else if (e.key === 'Enter') { if (TB.yv == null) return; tbApplyLevel(); }
+      else if (e.key === 'Escape') { if (TB.xOn || TB.msg || TB.yv != null) tbQuiet(); else return; }
+      else return;
+    }
+    e.preventDefault();
+    e.stopPropagation();          // Escape here is about the line: it does not clear the selection of wells
+    scheduleScrubView();
+  });
+}
+/** A value tried with the keys: the readout opens on that line (the other one back at rest). */
+function tbKeyStart(ds, axis) {
+  if (TB.play) stopReplay();
+  if (TB.kbd !== axis) {
+    if (axis === 'x') TB.yv = null; else { TB.xOn = false; TB.xv = null; }
+    TB.refRes = ds.res;
+  }
+  TB.msg = null;
+  clearTimeout(TB.msgT);
+  TB.kbd = axis;
+  TB.last = axis;
+}
+/** Dragging the threshold: the level follows the pointer, and holds on the threshold in force within 5 px. */
+function tbDragLevel(e) {
+  const ds = curDS(), g = TB.geo, r = CH.svg && CH.svg.isConnected ? CH.svg.getBoundingClientRect() : null;
+  if (!ds || !g || !r || !r.width) return;
+  const k = r.width / g.W, inf = tbInForce(ds);
+  const yF = isFinite(inf.v) && (!S.view.logY || inf.v > 0) ? g.sy(inf.v) : NaN;
+  const snap = isFinite(yF) && Math.abs((e.clientY - r.top) / k - yF) * k <= 5;
+  TB.drag.snapped = snap;
+  setLevel(snap ? inf.v : tbAxisValue('y', e), snap);
+}
+/** Dragging the cut-off: the line follows the pointer (on the readings), and holds where it stands within 5 px. */
+function tbDragCut(e) {
+  const ds = curDS(), g = TB.geo, r = CH.svg && CH.svg.isConnected ? CH.svg.getBoundingClientRect() : null;
+  if (!ds || !g || !r || !r.width) return;
+  const k = r.width / g.W, end = ds.t[ds.t.length - 1], xF = g.sx((S.set.cutoff == null ? end : S.set.cutoff) * TF());
+  const snap = isFinite(xF) && Math.abs((e.clientX - r.left) / k - xF) * k <= 5;
+  TB.drag.snapped = snap;
+  if (snap) setCutPreview(S.set.cutoff, true); else setCutPreview(tbAxisValue('x', e));
+}
+/** Esc while held, pointer taken away, or a gesture that is not a drag: back to what was shown before the press. */
+function tbCancelDrag() {
+  const d = TB.drag;
+  if (!d) return;
+  TB.drag = null;
+  try { d.el.releasePointerCapture(d.id); } catch (e) { /* ignore */ }
+  if (d.started) { if (d.axis === 'y') tbRestY(); else tbRestX(); }
+  scheduleScrubView();
+}
+function tbRestY() { TB.yv = null; if (TB.kbd === 'y') TB.kbd = null; if (!TB.xOn && !TB.msg) TB.refRes = null; }
+function tbRestX() { TB.xOn = false; TB.xv = null; if (TB.kbd === 'x') TB.kbd = null; if (TB.yv == null && !TB.msg) TB.refRes = null; }
+/** Show the cut-off line at v (hours; on the nearest reading unless exact; null or the end of the run: no cut-off). */
+function setCutPreview(v, exact) {
+  const ds = curDS();
+  if (!ds || !ds.t || ds.t.length < 2) return;
+  const t = ds.t;
+  let next = v == null || !isFinite(v) ? null : exact ? v : t[nearestIdx(t, v)];
+  if (next != null && next >= t[t.length - 1]) next = null;
+  if (TB.xOn && next === TB.xv) return;
+  TB.xOn = true;
+  TB.xv = next;
+  scheduleScrubView();
+}
+/** Show the threshold line at the level v of the y-axis (rounded to a readable value unless exact). */
+function setLevel(v, exact) {
+  const m = yThr();
+  let next = exact && v != null && isFinite(v) ? clamp(v, m.min, m.max) : tbRoundLevel(v);
+  if (next != null && S.view.logY && !(next > 0)) next = null;
+  if (next === TB.yv) return;
+  TB.yv = next;
+  scheduleScrubView();
+}
+/** Make the level shown the threshold of the analysis, in the method that matches the y-axis. */
+function tbApplyLevel() {
+  const ds = curDS(), v = TB.yv, m = yThr();
+  if (TB.kbd === 'y') TB.kbd = null;
+  if (!ds || v == null) return;
+  if (tbSameAsInForce(v)) { tbRestY(); scheduleScrubView(); return; }       // nothing to change
+  tbChartStep(ds);
+  const prev = Object.assign({}, S.set);
+  S.set.thrMode = m.mode;
+  S.set[m.key] = v;
+  S.setVer++;
+  TB.yv = null;
+  tbShowMsg('y', prev);
+  inv('plate', 'groups', 'settings', 'chart', 'results');
+}
+/** Make the cut-off shown the cut-off of the analysis (none at the end of the run). */
+function tbApplyCut() {
+  const ds = curDS(), v = TB.xv, on = TB.xOn;
+  if (TB.kbd === 'x') TB.kbd = null;
+  TB.xOn = false;
+  TB.xv = null;
+  if (!ds || !on) return;
+  if (tbSameCut(v)) { tbRestX(); scheduleScrubView(); return; }
+  tbChartStep(ds);
+  const prev = Object.assign({}, S.set);
+  S.set.cutoff = v;
+  S.setVer++;
+  tbShowMsg('x', prev);
+  inv('plate', 'groups', 'settings', 'chart', 'results');
+}
+/** After a line was set: what it was set to and what it was before, for a few seconds (longer while hovered). */
+function tbShowMsg(kind, prev) {
+  TB.msg = { kind, prev };
+  clearTimeout(TB.msgT);
+  TB.msgT = setTimeout(tbEndMsg, 4000);
+}
+function tbEndMsg() { TB.msg = null; if (TB.yv == null && !TB.xOn) TB.refRes = null; scheduleScrubView(); }
+
+/** Redraw what follows the lines at the next frame. */
+function scheduleScrubView() {
+  if (TB.raf) return;
+  TB.raf = requestAnimationFrame(() => { TB.raf = 0; updateScrubView(); });
+}
+/** The two lines with their handles, value tags, the readout, faded curves, and the plate. */
+function updateScrubView() {
+  const ds = curDS(), g = TB.geo, f = TB.fr;
+  const on = !!(ds && g && f && ds.t && ds.t.length > 1 && CH.ovSvg && CH.ovSvg.isConnected);
+  const t = on ? tbT() : null, lv = on ? TB.yv : null, pv = on && (TB.xOn || lv != null);
+  const c = on && (pv || TB.msg) ? previewCalls(ds, t) : null;
+  const diff = c && TB.refRes ? tbCallDiff(ds, c) : null;
+  if (on) {
+    tbLines(ds, g, f, lv);
+    tbTags(ds, g, f, lv, c);
+    tbPill(ds, g, f, lv, c, diff);
+    tbFade(c);
+    const xb = $('#timeAxis'), yb = $('#thrAxis'), cut = TB.xOn ? TB.xv : S.set.cutoff, at = cut == null ? ds.t[ds.t.length - 1] : cut;
+    xb.setAttribute('aria-valuenow', String(+(at * TF()).toFixed(4)));
+    xb.setAttribute('aria-valuetext', L('cut-off {0}', cutText(cut)));
+    const lev = lv != null ? lv : tbYOk() ? tbInForce(ds).v : NaN;
+    if (isFinite(lev)) { yb.setAttribute('aria-valuenow', String(lev)); yb.setAttribute('aria-valuetext', thrText(lev)); }
+    else { yb.removeAttribute('aria-valuenow'); yb.removeAttribute('aria-valuetext'); }
+    if (!$('#tbHint').hidden) { if (c) tbHideHint(false); else tbPlaceHint(); }
+  } else {
+    for (const id of ['tagX', 'tagXg', 'tagY', 'tagYg', 'tbPill', 'tbHint', 'cutLine', 'thrLine']) { const el = $('#' + id); if (el) el.hidden = true; }
+    tbFade(null);
+  }
+  tbPlate(ds, t, c, diff, pv);
+}
+/** The two lines over the chart (in the overlay, never in exports) and their handles, with their labels. */
+function tbLines(ds, g, f, lv) {
+  const lay = $('.scr', CH.ovSvg);
+  if (!lay) return;
+  const col = CH.col, tf = TF(), top = g.m.t, bot = g.m.t + g.ph, x0 = g.m.l, x1 = g.m.l + g.pw, k = f.k, px = v => v.toFixed(1) + 'px';
+  const Y = v => { if (v == null || !isFinite(v) || (S.view.logY && !(v > 0))) return NaN; const y = g.sy(v); return y >= top - 0.5 && y <= bot + 0.5 ? y : NaN; };
+  const hx = !!(TB.hover && TB.hover.axis === 'x'), hy = !!(TB.hover && TB.hover.axis === 'y');
+  let o = '';
+  // the cut-off: the line moving, or the one in force (at the end of the run while there is none)
+  const end = ds.t[ds.t.length - 1], cut = TB.xOn ? TB.xv : S.set.cutoff, xRaw = g.sx((cut == null ? end : cut) * tf), xl = $('#cutLine');
+  if (isFinite(xRaw) && xRaw >= x0 - 0.5 && xRaw <= x1 + 0.5 && (mkOn('cut') || TB.xOn)) {
+    const x = clamp(xRaw, x0, x1), moving = TB.xOn, faint = cut == null && !moving;
+    if (moving && cut != null) o += `<rect x="${x.toFixed(1)}" y="${top}" width="${Math.max(0, x1 - x).toFixed(1)}" height="${g.ph}" fill="${col.surface}" fill-opacity="0.6"/>`;
+    o += `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${top}" y2="${bot}" stroke="${col.muted}" stroke-width="${moving || hx ? 1.5 : 1}"${moving ? '' : ' stroke-dasharray="6 4"'}${faint ? ' stroke-opacity="0.45"' : ''}/>`;
+    const lab = L('Cut-off') + ' ' + cutText(cut), left = x > x1 - 90;
+    o += `<text x="${(left ? x - 4 : x + 4).toFixed(1)}" y="${top + 12}"${left ? ' text-anchor="end"' : ''} font-size="11" fill="${col.muted}"${faint ? ' fill-opacity="0.8"' : ''}>${esc(lab)}</text>`;
+    xl.style.cssText = `left:${px(f.ox + x * k - 5)};top:${px(f.T)};width:10px;height:${px(f.B - f.T)}`;
+    xl.hidden = false;
+  } else xl.hidden = true;
+  // the threshold: the line moving, or the one in force (where the wells' own lie, dotted, when they differ)
+  const yl = $('#thrLine');
+  if (tbYOk() && (mkOn('thr') || lv != null)) {
+    const inf = tbInForce(ds), moving = lv != null, lev = moving ? lv : inf.v, y = Y(lev), exact = moving || inf.exact;
+    if (moving && inf.exact) {                         // the threshold in force stays in view while the line moves
+      const yF = Y(inf.v);
+      if (isFinite(yF) && !(isFinite(y) && Math.abs(yF - y) < 0.5)) o += `<line x1="${x0}" x2="${x1}" y1="${yF.toFixed(1)}" y2="${yF.toFixed(1)}" stroke="${col.muted}" stroke-width="1" stroke-dasharray="6 4" stroke-opacity="0.45"/>`;
+    }
+    if (isFinite(y)) {
+      o += `<line x1="${x0}" x2="${x1}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${col.muted}" stroke-width="${moving || hy ? 1.5 : 1}" stroke-dasharray="${moving ? '5 3' : exact ? '6 4' : '2 3'}"${exact ? '' : ' stroke-opacity="0.7"'}/>`;
+      const lab = L('Threshold') + ' ' + (exact ? tagText(lev) : L('≈ {0} (differs per well)', tagText(lev))), below = y < top + 16;
+      o += `<text x="${x1 - 6}" y="${(below ? y + 13 : y - 5).toFixed(1)}" text-anchor="end" font-size="11" fill="${col.muted}" stroke="${col.surface}" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${esc(lab)}</text>`;
+      yl.style.cssText = `left:${px(f.L)};top:${px(f.oy + y * k - 5)};width:${px(f.R - f.L)};height:10px`;
+      yl.hidden = false;
+    } else yl.hidden = true;
+  } else yl.hidden = true;
+  // over an axis: a faint hairline where a press would bring the line
+  if (TB.hover && TB.hover.band && !TB.drag && TB.hoverV != null) {
+    if (TB.hover.axis === 'x') { const x = clamp(g.sx(ds.t[nearestIdx(ds.t, TB.hoverV)] * tf), x0, x1); o += `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${top}" y2="${bot}" stroke="${col.muted}" stroke-width="1" stroke-opacity="0.3"/>`; }
+    else if (tbYOk()) { const y = Y(tbRoundLevel(TB.hoverV)); if (isFinite(y)) o += `<line x1="${x0}" x2="${x1}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${col.muted}" stroke-width="1" stroke-opacity="0.3"/>`; }
+  }
+  lay.innerHTML = o;
+}
+/** Value tags on the axes: where a line moves, and (fainter) where a press would bring it. */
+function tbTags(ds, g, f, lv, c) {
+  const k = f.k, tf = TF(), uses = tbHintState(), end = ds.t[ds.t.length - 1];
+  const xPx = h => f.ox + clamp(g.sx(h * tf), g.m.l, g.m.l + g.pw) * k;
+  const yPx = v => { if (v == null || !isFinite(v) || (S.view.logY && !(v > 0))) return NaN; const y = g.sy(v); return y >= g.m.t - 0.5 && y <= g.m.t + g.ph + 0.5 ? f.oy + y * k : NaN; };
+  const bad = !!(c && c.negPos > 0), held = a => !!(TB.drag && TB.drag.axis === a && TB.drag.started) || TB.focus === a;
+  const hint = a => ((uses['n' + a] || 0) < 2 ? ' · ' + L('hold and drag') : '');
+  let xAt = NaN, yAt = NaN;
+  // the cut-off moving (or the one in force while its axis has the focus)
+  const xs = TB.xOn ? TB.xv : TB.focus === 'x' ? S.set.cutoff : undefined;
+  if (xs !== undefined) { xAt = xPx(xs == null ? end : xs); tbTag($('#tagX'), cutText(xs), 'x', xAt, f, { held: held('x'), bad: bad && TB.xOn, ghost: !TB.xOn }); }
+  else $('#tagX').hidden = true;
+  const ys = lv != null ? lv : TB.focus === 'y' && tbYOk() ? tbInForce(ds).v : null;
+  if (ys != null && isFinite(ys)) { yAt = yPx(ys); tbTag($('#tagY'), tagText(ys), 'y', yAt, f, { held: held('y'), bad: bad && lv != null, ghost: lv == null }); }
+  else $('#tagY').hidden = true;
+  const gx = $('#tagXg'), gy = $('#tagYg'), hov = TB.drag ? null : TB.hover;
+  if (hov && hov.axis === 'x' && TB.hoverV != null) {
+    // over the line: its value; over the axis: where a press would bring it
+    const v = hov.band ? ds.t[nearestIdx(ds.t, TB.hoverV)] : (S.set.cutoff == null ? end : S.set.cutoff), x = xPx(v);
+    if (isFinite(xAt) && Math.abs(x - xAt) < 18) gx.hidden = true;
+    else tbTag(gx, (hov.band ? cutText(v >= end ? null : v) : cutText(S.set.cutoff)) + hint('x'), 'x', x, f, { ghost: true, hint: (uses.nx || 0) < 2 });
+  } else gx.hidden = true;
+  if (hov && hov.axis === 'y' && TB.hoverV != null && !tbYOk()) tbTag(gy, L('Drag the threshold on the Signal, F − F0 or F / F0 axis'), 'y', yPx(TB.hoverV), f, { ghost: true, hint: true, inside: true });
+  else if (hov && hov.axis === 'y' && TB.hoverV != null) {
+    const v = hov.band ? tbRoundLevel(TB.hoverV) : tbInForce(ds).v, y = yPx(v), first = (uses.ny || 0) < 2;
+    if (!isFinite(y) || (isFinite(yAt) && Math.abs(y - yAt) < 12)) gy.hidden = true;
+    else tbTag(gy, tagText(v) + hint('y'), 'y', y, f, { ghost: true, hint: first, inside: first });
+  } else gy.hidden = true;
+}
+function tbTag(el, text, axis, pos, f, o) {
+  if (!isFinite(pos)) { el.hidden = true; return; }
+  if (el.textContent !== text) el.textContent = text;
+  const cls = 'tb-tag' + (o.ghost ? ' ghost' : '') + (o.held ? ' held' : '') + (o.bad ? ' bad' : '') + (o.hint ? ' hint' : '');
+  if (el.className !== cls) el.className = cls;
+  el.hidden = false;
+  if (axis === 'x') {
+    const half = text.length * 3.4 + 6;                     // about half its width: keep it over the axis
+    el.style.cssText = `left:${clamp(pos, f.L - 24 + half, f.R + 24 - half).toFixed(1)}px;top:${(f.B + 3).toFixed(1)}px;transform:translateX(-50%)`;
+  } else if (o.inside) el.style.cssText = `left:${(f.L + 6).toFixed(1)}px;top:${pos.toFixed(1)}px;transform:translateY(-50%)`;
+  else el.style.cssText = `left:${(f.L - 4).toFixed(1)}px;top:${pos.toFixed(1)}px;transform:translate(-100%,-50%)`;
+}
+/** The readout beside the line in use: where it is (or what was set, and what it was before), how many wells are
+    positive then, which change, the negative controls. Numbers only; "+3" / "−1" select those wells. */
+function tbPill(ds, g, f, lv, c, diff) {
+  const pill = $('#tbPill');
+  if (!c) { pill.hidden = true; return; }
+  const dr = TB.drag && TB.drag.started ? TB.drag : null, set = (id, text) => { const el = $(id, pill); if (el.textContent !== text) el.textContent = text; el.hidden = !text; return el; };
+  const msg = !dr && lv == null && !TB.xOn ? TB.msg : null;
+  let main = '';
+  if (msg) main = msg.kind === 'y' ? L('set to {0}', methodText(S.set)) : L('cut-off set to {0}', cutText(S.set.cutoff));
+  else main = [TB.xOn ? (TB.play ? L('Replay {0}', tbTime(TB.xv == null ? ds.t[ds.t.length - 1] : TB.xv)) : L('cut-off {0}', cutText(TB.xv))) : '', lv != null ? thrText(lv) : ''].filter(Boolean).join(' · ');
+  set('#tpMain', main);
+  set('#tpCount', L('positive {0}/{1}', c.pos.size, c.n));
+  TB.upIds = diff ? diff.up : [];
+  TB.downIds = diff ? diff.down : [];
+  set('#tpUp', TB.upIds.length ? '+' + TB.upIds.length : '').title = TB.upIds.length ? L('{0} wells turn positive — click to select them', TB.upIds.length) : '';
+  set('#tpDown', TB.downIds.length ? '−' + TB.downIds.length : '').title = TB.downIds.length ? L('{0} wells turn negative — click to select them', TB.downIds.length) : '';
+  set('#tpNeg', c.negN ? L('neg. control {0}/{1}', c.negPos, c.negN) : '').classList.toggle('bad', c.negPos > 0);
+  let note = '';
+  if (dr) note = dr.snapped ? L('release: no change') : L('release to set · Esc cancels');
+  else if (TB.kbd && (lv != null || TB.xOn)) note = L('Enter sets · Esc cancels');
+  else if (msg) note = L('(was: {0})', msg.kind === 'y' ? methodText(msg.prev) : cutText(msg.prev.cutoff));
+  set('#tpNote', note);
+  pill.hidden = false;
+  // beside the line in use: above the threshold line (below it near the top), or near the x-axis right of the
+  // cut-off line (left of it near the right edge); in a narrow chart at the top left of the plot
+  const right = f.narrow ? f.ox + f.W - 4 : f.R - 2;
+  pill.style.maxWidth = Math.max(140, right - f.L - 8).toFixed(0) + 'px';
+  const w = pill.offsetWidth, h = pill.offsetHeight, axis = msg ? msg.kind : TB.xOn && (lv == null || TB.last === 'x') ? 'x' : 'y';
+  let x = f.L + 6, y = f.T + 6;
+  if (!f.narrow && axis === 'y') {
+    const lev = lv != null ? lv : tbInForce(ds).v, ly = isFinite(lev) && (!S.view.logY || lev > 0) ? f.oy + g.sy(lev) * f.k : NaN;
+    if (isFinite(ly)) { x = f.L + 8; y = ly - 8 - h; if (y < f.T + 2) y = ly + 8; }
+  } else if (!f.narrow) {
+    const cut = TB.xOn ? TB.xv : S.set.cutoff, end = ds.t[ds.t.length - 1];
+    const lx = f.ox + clamp(g.sx((cut == null ? end : cut) * TF()), g.m.l, g.m.l + g.pw) * f.k;
+    y = f.B - 8 - h; x = lx + 8; if (x + w > f.R - 4) x = lx - 8 - w;
+  }
+  x = clamp(x, f.L + 2, Math.max(f.L + 2, right - w));
+  y = clamp(y, f.T + 2, Math.max(f.T + 2, f.B - h - 2));
+  pill.style.left = x.toFixed(1) + 'px';
+  pill.style.top = y.toFixed(1) + 'px';
+}
+/** Curves of wells negative with the lines shown are faded (a group's curve while none of its wells is positive);
+    classes are changed only where the call changed since the last frame. */
+function tbFade(c) {
+  const svg = CH.svg;
+  if (!svg || !svg.isConnected) return;
+  if (TB.fsvg !== svg) { TB.fsvg = svg; TB.fmap = null; TB.faded = new Set(); }
+  if (!c) {
+    if (TB.faded.size && TB.fmap) TB.faded.forEach(id => { const e = TB.fmap.get(id); if (e) e.els.forEach(n => n.classList.remove('tb-neg')); });
+    TB.faded = new Set();
+    return;
+  }
+  if (!TB.fmap) {
+    const wells = new Map();
+    for (const s of (CH.data && CH.data.series) || []) wells.set(s.id, s.ids && s.ids.length ? s.ids : [s.id]);
+    for (const r of (CH.data && CH.data.reps) || []) wells.set(r.id, [r.id]);
+    TB.fmap = new Map();
+    $$('[data-id]', svg).forEach(n => {
+      const id = n.getAttribute('data-id'), ws = wells.get(id);
+      if (!ws) return;
+      let e = TB.fmap.get(id);
+      if (!e) TB.fmap.set(id, e = { ws, els: [] });
+      e.els.push(n);
+    });
+  }
+  const next = new Set();
+  TB.fmap.forEach((e, id) => { if (!e.ws.some(w => c.pos.has(w))) next.add(id); });
+  TB.fmap.forEach((e, id) => { const a = next.has(id); if (a !== TB.faded.has(id)) e.els.forEach(n => n.classList.toggle('tb-neg', a)); });
+  TB.faded = next;
+}
+/** The plate follows: thumbnails cut where the cut-off line moves (one CSS clip), the positive/negative view redrawn
+    only when its wells change, dashed rings round the wells whose call changes. */
+function tbPlate(ds, t, c, diff, pv) {
+  const plate = $('#plate');
+  if (!plate || !ds || !ds.t) return;
+  const mode = S.view.plateMode, cut = TB.xOn && TB.xv != null && (mode === 'spark' || mode === 'call') && ds.t.length > 1;
+  plate.classList.toggle('cutting', cut);
+  if (cut) { const t0 = ds.t[0], span = (ds.t[ds.t.length - 1] - t0) || 1; plate.style.setProperty('--cut', ((TB.xv - t0) / span * 100).toFixed(2) + '%'); }
+  if (mode === 'call') {
+    if ((pv && c ? [...c.pos].join(',') : '-') !== TB.platePos) { renderPlate(); return; }     // renderPlate ends with tbPlateMarks
+    const sp = $('#plateFoot .tbf');
+    if (sp && pv && c && sp.lastChild) sp.lastChild.textContent = ' ' + tbFootText(c.pos.size, dataWells(ds).length);
+  }
+  tbPlateMarks(false, c, diff);
+}
+/** The words under the positive/negative view while a line moves. */
+function tbFootText(pos, n) {
+  const parts = [];
+  if (TB.xOn) parts.push(TB.xv == null ? L('no cut-off') : L('up to {0}', tbTime(TB.xv)));
+  if (TB.yv != null) parts.push(thrText(TB.yv));
+  return L('{0}: {1} positive / {2} wells', parts.join(/^zh/i.test(S.lang || '') ? '、' : ', '), pos, n);
+}
+/** Dashed rings round the wells whose call changes (fresh: the plate's wells were just drawn anew). */
+function tbPlateMarks(fresh, c, diff) {
+  const ds = curDS();
+  if (fresh) TB.rings = new Map();
+  if (!ds) return;
+  const pv = !!TB.fr && (TB.xOn || TB.yv != null), active = pv || (!!TB.fr && !!TB.msg);
+  if (active && !c) c = previewCalls(ds, TB.fr ? tbT() : null);
+  if (S.view.plateMode === 'call') TB.platePos = pv && c ? [...c.pos].join(',') : '-';
+  if (!diff) diff = active && c && TB.refRes ? tbCallDiff(ds, c) : { up: [], down: [] };
+  const want = new Map();
+  for (const id of diff.up) want.set(id, 'tb-up');
+  for (const id of diff.down) want.set(id, 'tb-down');
+  TB.rings.forEach((cls, id) => { if (want.get(id) !== cls) { const el = wellEls.get(id); if (el) el.classList.remove(cls); } });
+  want.forEach((cls, id) => { if (TB.rings.get(id) !== cls) { const el = wellEls.get(id); if (el) el.classList.add(cls); } });
+  TB.rings = want;
+}
+
+/** "Replay" / "Stop" on the button (English: the page's translator puts it into the language in use). */
+function setPlayIcon(on) {
+  on = !!on;
+  const b = $('#btnReplay');
+  if (b && b.dataset.state !== String(on)) {
+    b.dataset.state = String(on);
+    b.innerHTML = (on ? ICON.stop : ICON.play) + `<span>${on ? 'Stop' : 'Replay'}</span>`;
+    b.title = on ? 'Stop' : 'Replay the run';
+  }
+}
+/** Run the cut-off line through the run once (about 9 s): the wells turn positive as it passes; nothing is set. */
+function startReplay() {
+  const ds = curDS();
+  if (!ds || !ds.t || ds.t.length < 2) return;
+  const t = ds.t, a = t[0], b = t[t.length - 1], start = performance.now();
+  TB.yv = null;
+  TB.kbd = null;
+  TB.msg = null;
+  clearTimeout(TB.msgT);
+  TB.refRes = null;
+  TB.last = 'x';
+  TB.xOn = true;
+  TB.xv = a;
+  setPlayIcon(true);
+  const step = now => {
+    const p = Math.min(1, (now - start) / 9000);
+    if (p >= 1) { stopReplay(); return; }
+    const v = t[nearestIdx(t, a + p * (b - a))], next = v >= b ? null : v;
+    if (next !== TB.xv) { TB.xv = next; scheduleScrubView(); }
+    TB.play = requestAnimationFrame(step);
+  };
+  TB.play = requestAnimationFrame(step);
+  scheduleScrubView();
+}
+function stopReplay() {
+  if (TB.play) cancelAnimationFrame(TB.play);
+  TB.play = 0;
+  TB.xOn = false;
+  TB.xv = null;
+  setPlayIcon(false);
+  scheduleScrubView();
+}
+
+/* A hint on the chart the first times (the pointer rests a second over the plot): the two lines can be dragged. It
+   goes for good with "Got it", after both lines were dragged, or after it was shown on three visits. */
+function tbHintState() {
+  if (!TB.hs) {
+    let o = null;
+    try { o = JSON.parse(localStorage.getItem('pk.lines.hint') || 'null'); } catch (e) { o = null; }
+    TB.hs = isObj(o) ? o : {};
+  }
+  return TB.hs;
+}
+function tbSaveHint() { try { localStorage.setItem('pk.lines.hint', JSON.stringify(TB.hs)); } catch (e) { /* ignore */ } }
+function tbShowHint() {
+  const el = $('#tbHint'), o = tbHintState();
+  if (!el || !el.hidden || TB.hintDone || !TB.fr || TB.drag || TB.xOn || TB.yv != null || TB.msg) return;
+  if (o.dismissed || (o.x && o.y) || ((o.sessions || 0) >= 3 && !TB.hintShown)) return;
+  const hx = $('#tbHintX'), hy = $('#tbHintY');
+  if ((o.x || !mkOn('cut')) && (o.y || !tbYOk() || !mkOn('thr'))) return;        // no line shown that it could speak of
+  if (!TB.hintShown) { TB.hintShown = true; o.sessions = (o.sessions || 0) + 1; tbSaveHint(); }
+  hy.textContent = L('↕ Hold the dashed horizontal line (threshold) and drag; release sets it (Ctrl+Z undoes)');
+  hx.textContent = L('↔ Hold the dashed vertical line (cut-off) and drag; at the right end = no cut-off');
+  hx.hidden = !!o.x || !mkOn('cut');
+  hy.hidden = !!o.y || !tbYOk() || !mkOn('thr');
+  $('#tbHintOk').textContent = L('Got it');
+  el.hidden = false;
+  tbPlaceHint();
+}
+function tbPlaceHint() {
+  const el = $('#tbHint'), f = TB.fr;
+  if (!el || !f) return;
+  el.style.maxWidth = Math.max(160, Math.min(360, f.R - f.L - 12)).toFixed(0) + 'px';
+  el.style.left = Math.max(f.L + 6, f.R - 6 - el.offsetWidth).toFixed(1) + 'px';
+  el.style.top = (f.T + 18).toFixed(1) + 'px';
+}
+function tbHideHint(forGood) {
+  clearTimeout(TB.hintT);
+  clearTimeout(TB.hintOut);
+  if (forGood) { tbHintState().dismissed = true; tbSaveHint(); }
+  const el = $('#tbHint');
+  if (!el || el.hidden) return;
+  el.hidden = true;
+  TB.hintDone = true;
+}
+/** A line was dragged: counted (the tag says "hold and drag" the first two times), and the hint has done its job. */
+function tbMarkUsed(axis) {
+  const o = tbHintState();
+  o[axis] = true;
+  o['n' + axis] = (o['n' + axis] || 0) + 1;
+  tbSaveHint();
+  tbHideHint(false);
+}
+
+function setupTimeBar() {
+  const layer = $('#tbLayer');
+  layer.setAttribute('translate', 'no');                  // every text here is put in the language in use by L()
+  layer.innerHTML = '<div class="tax" id="timeAxis" tabindex="0" role="slider" aria-orientation="horizontal"></div>'
+    + '<div class="tax ty" id="thrAxis" tabindex="0" role="slider" aria-orientation="vertical"></div>'
+    + '<div class="tbl v" id="cutLine" hidden></div><div class="tbl h" id="thrLine" hidden></div>'
+    + '<div class="tb-tag" id="tagX" hidden></div><div class="tb-tag" id="tagXg" hidden></div>'
+    + '<div class="tb-tag" id="tagY" hidden></div><div class="tb-tag" id="tagYg" hidden></div>'
+    + '<div class="tb-pill" id="tbPill" role="status" hidden><span class="tp-main" id="tpMain"></span><span id="tpCount"></span>'
+    + '<button type="button" class="tp-n" id="tpUp" hidden></button><button type="button" class="tp-n dn" id="tpDown" hidden></button>'
+    + '<span class="tp-neg" id="tpNeg" hidden></span><span class="tp-note" id="tpNote" hidden></span></div>'
+    + '<div class="tb-hint" id="tbHint" role="note" hidden><p id="tbHintY"></p><p id="tbHintX"></p>'
+    + '<div class="row"><button type="button" class="btn sm" id="tbHintOk"></button></div></div>';
+  wireDrag($('#timeAxis'), 'x', true);
+  wireDrag($('#thrAxis'), 'y', true);
+  wireDrag($('#cutLine'), 'x', false);
+  wireDrag($('#thrLine'), 'y', false);
+  const pill = $('#tbPill');
+  pill.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.id === 'tpUp' && TB.upIds.length) selectIds(TB.upIds.slice(), false);
+    else if (b.id === 'tpDown' && TB.downIds.length) selectIds(TB.downIds.slice(), false);
+  });
+  // the readout after a set stays while the pointer is on it
+  pill.addEventListener('pointerenter', () => clearTimeout(TB.msgT));
+  pill.addEventListener('pointerleave', () => { if (TB.msg) { clearTimeout(TB.msgT); TB.msgT = setTimeout(tbEndMsg, 1500); } });
+  $('#tbHintOk').addEventListener('click', () => tbHideHint(true));
+  // a value tried with the keys goes when the focus leaves the axes and the readout
+  layer.addEventListener('focusout', e => {
+    if (e.relatedTarget && layer.contains(e.relatedTarget)) return;
+    if (TB.kbd === 'x') tbRestX(); else if (TB.kbd === 'y') tbRestY();
+    scheduleScrubView();
+  });
+  $('#btnReplay').addEventListener('click', () => { if (TB.play) stopReplay(); else startReplay(); });
+  // the hint comes when the pointer rests over the plot (or after a tap on it)
+  const box = $('#chartBox'), card = $('#chartCard');
+  box.addEventListener('pointermove', e => {
+    if (TB.hintDone || e.pointerType === 'touch' || !$('#tbHint').hidden) return;
+    clearTimeout(TB.hintT);
+    TB.hintT = setTimeout(tbShowHint, 1000);
+  }, { passive: true });
+  box.addEventListener('pointerup', e => { if (e.pointerType === 'touch' && !TB.hintDone) { clearTimeout(TB.hintT); TB.hintT = setTimeout(tbShowHint, 400); } });
+  box.addEventListener('pointerleave', () => clearTimeout(TB.hintT));
+  card.addEventListener('pointerenter', () => clearTimeout(TB.hintOut));
+  card.addEventListener('pointerleave', () => { if (!$('#tbHint').hidden) TB.hintOut = setTimeout(() => tbHideHint(false), 8000); });
+  // Esc: a drag in hand is cancelled, the hint closed, a line moving or the readout put back to rest (before it would
+  // clear the selection of wells)
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || $('.modal-back') || popEl) return;
+    if (TB.drag) { tbCancelDrag(); e.preventDefault(); e.stopPropagation(); return; }
+    const t = e.target, tag = ((t && t.tagName) || '').toLowerCase();
+    if (t && t.closest && t.closest('#tbLayer .tax')) return;           // the axes handle their own keys
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || (t && t.isContentEditable)) return;
+    if (!$('#tbHint').hidden) tbHideHint(false);
+    else if (TB.xOn || TB.yv != null || TB.msg) tbQuiet();
+    else return;
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
+  setPlayIcon(false);
+}
+
+/* ---------- which parameter marks the chart draws ---------- */
+/* "Parameter markers" is a menu: the threshold line, the cut-off line (both can be dragged) and the marks of each well
+   (lag time ●, T50 ◆, plateau reached ■, max-slope tangent / fitted curve ╌) are each shown or not, on screen and in
+   exported images and reports alike. S.view.markers stays the master switch (some mark is shown); S.view.mk holds the
+   choice of each mark (a mark missing there is shown). */
+const MK_KEYS = ['thr', 'cut', 'lag', 't50', 'plat', 'tan'];
+function mkOn(k) {
+  if (!S.view.markers) return false;
+  const m = S.view.mk;
+  return !(m && typeof m === 'object' && m[k] === false);
+}
+function mkSet(k, on) {
+  const m = {};
+  for (const x of MK_KEYS) m[x] = mkOn(x);
+  m[k] = !!on;
+  S.view.mk = m;
+  S.view.markers = MK_KEYS.some(x => m[x]);
+}
+function mkSetAll(on) {
+  const m = {};
+  for (const x of MK_KEYS) m[x] = !!on;
+  S.view.mk = m;
+  S.view.markers = !!on;
+}
+/** The line under the legend that says what the marks of the wells mean (only those shown). */
+function mkLegendNote() {
+  const parts = [mkOn('lag') && '● ' + L('Lag time'), mkOn('t50') && '◆ T50', mkOn('plat') && '■ ' + L('Plateau reached'), mkOn('tan') && '╌ ' + L('Max-slope tangent')].filter(Boolean);
+  return parts.join(/^zh/i.test(S.lang || '') ? '　' : '   ');
+}
+/** The menu's button says how many marks are shown when it is not all of them. */
+function mkButton() {
+  const b = $('#btnMarkers');
+  if (!b) return;
+  const n = MK_KEYS.filter(mkOn).length, c = $('.mk-n', b);
+  if (c) c.textContent = n === MK_KEYS.length ? '' : ` ${n}/${MK_KEYS.length}`;
+}
+function openMarkers(anchor) {
+  if (popEl && popEl.classList.contains('mk-pop')) { closePop(); return; }
+  const rows = [['thr', L('Threshold line (drag to set)')], ['cut', L('Cut-off line (drag to set)')], null,
+    ['lag', '● ' + L('Lag time')], ['t50', '◆ T50'], ['plat', '■ ' + L('Plateau reached')], ['tan', '╌ ' + L('Max-slope tangent / fitted curve')]];
+  const html = '<div class="mk-list" translate="no">'
+    + rows.map(r => (r ? `<label class="chk"><input type="checkbox" data-k="${r[0]}"${mkOn(r[0]) ? ' checked' : ''}> ${esc(r[1])}</label>` : '<div class="mk-sep"></div>')).join('')
+    + `<p class="mk-note">${esc(L('Marks of each well: drawn for up to 12 curves; with more, for the curve under the pointer'))}</p></div>`
+    + `<div class="mk-row" translate="no"><button type="button" class="btn sm" data-mk="all">${esc(L('Show all'))}</button><button type="button" class="btn sm" data-mk="none">${esc(L('Hide all'))}</button></div>`;
+  const el = openPop(anchor, html, p => p.classList.add('mk-pop'));
+  const sync = () => { $$('input[data-k]', el).forEach(i => { i.checked = mkOn(i.dataset.k); }); mkButton(); inv('chart'); };
+  el.addEventListener('change', e => { const i = e.target.closest('input[data-k]'); if (!i) return; mkSet(i.dataset.k, i.checked); sync(); });
+  el.addEventListener('click', e => { const b = e.target.closest('[data-mk]'); if (!b) return; mkSetAll(b.dataset.mk === 'all'); sync(); });
+}
+
+/* ---------- analysis settings: one set for every dataset, or one for each ---------- */
+/* By default every dataset is analysed with the same settings (S.set). With "each dataset separately" every dataset
+   keeps its own (ds.set) and S.set is the very object of the dataset shown, so whatever shows or changes a setting works
+   on that dataset's. A dataset that comes in later starts from the settings shown. A shared room carries one set of
+   settings and uses it for all. Saved with the project beside the datasets: settingsPerDataset, datasetSettings. */
+const eachOn = () => !!S.each && !COLLAB.active;
+/** The settings a dataset is analysed with. */
+const setOf = ds => (eachOn() && ds && ds.set) || S.set;
+/** Keeps S.set the settings of the dataset shown (each dataset its own); true when it became another dataset's. */
+function syncSet() {
+  if (!eachOn()) return false;
+  for (const d of S.ds) if (!d.set) d.set = Object.assign({}, S.set);
+  const ds = curDS();
+  if (!ds || S.set === ds.set) return false;
+  S.set = ds.set;
+  S.setVer++;
+  return true;
+}
+/** One set of settings for all datasets (false) or one for each (true). */
+function setScope(each) {
+  each = !!each;
+  if (each === !!S.each) return;
+  if (each) {
+    for (const d of S.ds) d.set = Object.assign({}, S.set);         // each starts from the settings in use
+    S.each = true;
+    if (curDS()) S.set = curDS().set;
+  } else {
+    S.set = Object.assign({}, S.set);                                // the settings of the dataset shown, for all
+    for (const d of S.ds) delete d.set;
+    S.each = false;
+  }
+  S.setVer++;
+  S.dirty = true;
+  dropSetSteps();
+  AUTOSAVE.touch();
+  invAll();
+}
+
+/* ---------- notes about the experiment of a dataset ---------- */
+/* Each dataset can carry notes (ds.notes): what was run, samples, reagents, who and when. They are kept with the
+   project file and the autosave (beside the datasets: a shared room does not carry them), and written into the
+   notes sheet of exports and at the top of reports. The icon before the name is filled while a dataset has notes. */
+function openNotes(anchor, i) {
+  const ds = S.ds[i];
+  if (!ds) return;
+  const el = openPop(anchor, '<h4 translate="no"></h4><textarea class="notes-ta" rows="8"></textarea><p class="hint" translate="no" style="margin:6px 0 0"></p>', p => {
+    p.classList.add('notes');
+    $('h4', p).textContent = L('Experiment notes · {0}', ds.name);
+    $('.hint', p).textContent = COLLAB.active ? L('Not shared with the room and not kept after a reload: use “Save project” to keep them')
+      : AUTOSAVE.enabled() ? L('Kept in this browser automatically; written into Excel exports and reports; use “Save project” to take it to another computer')
+      : L('Not saved automatically: use “Save project” before closing the page');
+  });
+  const ta = $('textarea', el);
+  ta.placeholder = L('For example: date, sample source, reagent lot, operator, instrument settings…');   // (a text box is never translated by the page)
+  ta.value = ds.notes || '';
+  try { ta.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+  ta.addEventListener('input', () => {
+    const had = !!ds.notes;
+    ds.notes = ta.value.slice(0, 20000);
+    S.dirty = true;
+    AUTOSAVE.touch();
+    if (had !== !!ds.notes) renderTabs();
+  });
+}
+function setupNotes() {
+  const box = $('#dsTabs');
+  box.addEventListener('click', e => {
+    const b = e.target.closest('[data-notes]');
+    if (!b) return;
+    e.stopPropagation();
+    const i = +b.dataset.notes;
+    if (i !== S.cur) switchDS(i);
+    openNotes(b, i);
+  }, true);
+  // Enter or Space on the icon opens the notes (the tab would take them to switch), a double click does not rename
+  box.addEventListener('keydown', e => { if (e.target.closest('[data-notes]') && (e.key === 'Enter' || e.key === ' ')) e.stopPropagation(); }, true);
+  box.addEventListener('dblclick', e => { if (e.target.closest('[data-notes]')) e.stopPropagation(); }, true);
 }
 function legendItems(ds, data) {
   if (data.kind !== 'well') return data.series.map(s => ({ label: s.label + `  (n=${s.n})`, color: s.color, dash: s.dash }));
@@ -8055,7 +9255,8 @@ function renderLegend(ds, data, chart) {
     }
   }
   if (chart.crowded) parts.push(`<span class="lg-note">${L('The names would cover one another at the curve ends, so the legend is used here')}</span>`);
-  if (data.kind === 'well' && S.view.markers && data.series.length <= 12) parts.push('<span class="lg-note">● Lag time   ◆ T50   ■ Plateau reached   ╌ Max-slope tangent</span>');
+  const mkn = mkLegendNote();
+  if (data.kind === 'well' && mkn && data.series.length <= 12) parts.push(`<span class="lg-note" translate="no">${esc(mkn)}</span>`);
   el.innerHTML = parts.join('');
 }
 /** Emphasise one curve (thicker, on top); the others stay as they are.
@@ -8161,6 +9362,14 @@ function setupChart() {
       inv('chart');
       return;
     }
+    // A double click puts the zoom back. Its first click has selected the curve under the pointer: the second one
+    // gives the selection back as it was.
+    const ds = curDS(), k = CH.click;
+    if (S.zoom && ds && k && k.ds === ds && e.timeStamp - k.at < 450 && Math.abs(e.clientX - k.x) < 6 && Math.abs(e.clientY - k.y) < 6) {
+      ds.sel = k.sel; CH.click = null; S.zoom = null; afterSel(); inv('chart');
+      return;
+    }
+    CH.click = ds ? { ds, at: e.timeStamp, x: e.clientX, y: e.clientY, sel: new Set(ds.sel) } : null;
     selectSeries(chartHover(px, py, null), d.ctrl);
   });
   box.addEventListener('click', e => {
@@ -8339,7 +9548,7 @@ function callText(r) {
   if (!r) return '';
   if (r.excluded) return 'Excluded';
   if (!r.n) return 'No data';
-  return r.positive ? '+ Positive' : '− Negative';
+  return r.positive ? 'Positive' : 'Negative';      // (no sign in front: a cell that begins with "+" is a formula to Excel)
 }
 function callHtml(r) {
   if (!r) return '';
@@ -8409,7 +9618,7 @@ function groupStatRows(ds, keys, allSets, scope) {
   for (const si of multi ? ds.sets.map((s, i) => i) : [ds.gs]) {
     for (const g of groupStatsList(ds, si, undefined, scope)) {
       const row = (multi ? [ud(ds.sets[si].name)] : []).concat([g.gid ? ud(g.label) : g.label, g.n, g.pos, g.n ? +(g.pos / g.n * 100).toFixed(1) : null, g.n ? +(g.ci.lo * 100).toFixed(1) : null, g.n ? +(g.ci.hi * 100).toFixed(1) : null, g.n ? (g.gpos ? 'Positive' : 'Negative') : '']);
-      keys.forEach(k => { const st = g.st[k], e = g.ev[k]; row.push(num(st.mean), num(st.sd), num(st.sem), st.n); if (e) row.push(!e.n ? null : e.reached ? num(e.median) : ud('> ' + +e.beyond.toPrecision(10)), e.n - e.events); });
+      keys.forEach(k => { const st = g.st[k], e = g.ev[k]; row.push(num(st.mean), num(st.sd), num(st.sem), st.n); if (e) row.push(!e.n ? null : e.reached ? num(e.median) : ud('> ' + +e.after.toPrecision(10)), e.n - e.events); });
       rows.push(row);
     }
   }
@@ -8474,9 +9683,12 @@ function thHtml(key, label, unit, txt) {
   const ar = S.sort.key === key ? `<span class="ar">${S.sort.dir > 0 ? ' ▲' : ' ▼'}</span>` : '';
   return `<th class="${txt ? 'txt' : ''}" data-k="${key}" title="${esc(PARAMS[key] ? PARAMS[key].tip : 'Click to sort')}">${esc(label)}${ar}${unit != null ? `<span class="u" translate="no">${esc(unit || ' ')}</span>` : ''}</th>`;
 }
-function methodNote() {
+function methodNote(ds) {
   const s = S.set;
-  const thr = { sd: L('well baseline + {0}×SD', s.thrK), neg: L('negative-control mean + {0}×SD', s.thrK), add: `F0 + ${s.thrAdd}`, fold: `F0 × ${s.thrFold}`, pct: L('baseline + {0}% of the largest amplitude', s.thrPct), fixed: L('fixed {0}', s.thrFixed) }[s.thrMode];
+  // "negative-control mean + k·SD" without a usable control group is worked out as the well's own baseline + k·SD
+  // (plateContext warns of it): the note says what was used
+  const ctx = (ds || curDS() || {}).ctx, mode = s.thrMode === 'neg' && !(ctx && isFinite(ctx.negThr)) ? 'sd' : s.thrMode;
+  const thr = { sd: L('well baseline + {0}×SD', s.thrK), neg: L('negative-control mean + {0}×SD', s.thrK), add: `F0 + ${s.thrAdd}`, fold: `F0 × ${s.thrFold}`, pct: L('baseline + {0}% of the largest amplitude', s.thrPct), fixed: L('fixed {0}', s.thrFixed) }[mode];
   const lag = { threshold: L('threshold'), pct: L('{0}% amplitude', s.lagPct), tangent: L('tangent'), fit: L('Boltzmann fit (t½ − 2τ)') }[s.lagMethod];
   const plat = { pct: `F0 + ${s.plateauPct}%·ΔF`, tangent: L('tangent meets Fmax'), fit: 't½ + 2τ' }[s.plateauMethod] || '';
   const sm = { none: L('none'), ma: L('moving average'), sg: 'Savitzky–Golay' }[s.smooth] + (s.smooth !== 'none' ? ' ' + s.smoothW + L(' pts') : '');
@@ -8525,7 +9737,7 @@ function groupTableHtml(ds, keys, dark, scope) {
     if (mode === 'median' && e && e.n > e.events) {
       // some wells did not rise: they count as later than the time they were watched for
       const late = '&gt; ' + esc(fmt(e.beyond, dec[k]));
-      return `<td title="${esc(L('{0} of {1} wells did not rise; the median counts them as later than the end of their run', e.n - e.events, e.n))}">${e.reached ? esc(fmt(e.median, dec[k])) : late}${e.events ? dim(`[${esc(fmt(e.min, dec[k]))} – ${late}]`) : ''}${dim(`(n=${e.events}/${e.n})`)}</td>`;
+      return `<td title="${esc(L('{0} of {1} wells did not rise; the median counts them as later than the end of their run', e.n - e.events, e.n))}">${e.reached ? esc(fmt(e.median, dec[k])) : '&gt; ' + esc(fmt(e.after, dec[k]))}${e.events ? dim(`[${esc(fmt(e.min, dec[k]))} – ${late}]`) : ''}${dim(`(n=${e.events}/${e.n})`)}</td>`;
     }
     if (!s.n) return '<td class="na">—</td>';
     let spread = '';
@@ -8720,7 +9932,7 @@ function compareStats(ds, key, items) {
   const adj = C.pAdjust(rows.map(r => r.p), st.adjust);
   rows.forEach((r, k) => { r.padj = adj[k]; r.stars = sigStars(r.padj); });
   const overall = list.length > 2 && st.test !== 'fisher' ? (st.test === 'mwu' ? C.kruskal(vals) : C.welchAnova(vals)) : null;
-  return { rows, overall, list, ctrl, mode: st.mode, test: st.test, adjust: st.adjust, nCens, ranked, unranked: ranked ? nCens - late.reduce((a, b) => a + b, 0) : 0 };
+  return { rows, overall, list, ctrl, mode: st.mode, test: st.test, adjust: st.adjust, nCens, ranked, unranked: st.test === 'mwu' ? nCens - late.reduce((a, b) => a + b, 0) : 0 };
 }
 /** One line saying what the significance marks stand for (exported figure, table footer, export notes). */
 function statCaption(sig) {
@@ -8822,6 +10034,7 @@ function renderCompare(ds) {
     $('#cmpStat').innerHTML = statTableHtml(key, sig);
     const extra = [L('Significance: ') + statCaption(sig) + L('.'), statOverallText(sig)];
     if (sig.ranked) extra.push(L('Wells that did not rise take part in the rank test as later than every measured time{0}.', sig.unranked ? L(' ({0} of them stopped being read early, cannot be ranked and are left out)', sig.unranked) : ''));
+    else if (sig.test === 'mwu' && sig.unranked) extra.push(L('The wells that did not rise ({0}) cannot be ranked here: a measured time is later than the time they were watched for (a cut-off time, for example). The U test compares only the wells that rose.', sig.unranked));
     else if (sig.nCens && sig.test === 'welch') extra.push(sig.nCens === 1 ? L('The t-test compares only the wells that rose; {0} well without a rise is left out. The Mann–Whitney or Fisher’s exact test can count it.', 1) : L('The t-test compares only the wells that rose; {0} wells without a rise are left out. The Mann–Whitney or Fisher’s exact test can count them.', sig.nCens));
     const c = sig.mode === 'ctrl' ? sig.list[sig.ctrl] : null;
     if (c && !c.vals.length && !sig.ranked && sig.test !== 'fisher') extra.push(L('The control “{0}” has no values for this parameter (negative wells report no lag time, for example), so nothing can be compared: pick another parameter, or another control under “Significance tests…”.', c.label));
@@ -9330,7 +10543,7 @@ function copyLayout(src, dst, keepNames) {
 }
 function doImport(st, prev) {
   const created = [];
-  const taken = new Set(S.ds.filter(d => !(d.isDemo && !d.undo.length)).map(d => d.name));      // (an untouched example makes way for the import)
+  const taken = new Set(S.ds.filter(d => !(d.isDemo && !dsEdited(d) && !d.notes)).map(d => d.name));      // (an untouched example makes way for the import)
   for (const e of st.list) {
     if (!importReady(e)) continue;
     const sh = e.sheets[e.sheetIdx];
@@ -9349,7 +10562,7 @@ function doImport(st, prev) {
   if (!created.length) return;
   const g = guessSigLabel(created[0].channel);
   if (g && sigNameIndex(S.view.sigLabel) >= 0) S.view.sigLabel = g;
-  S.ds = S.ds.filter(d => !(d.isDemo && !d.undo.length));
+  S.ds = S.ds.filter(d => !(d.isDemo && !dsEdited(d) && !d.notes));      // (an example with notes is kept)
   S.ds.push(...created);
   S.cur = S.ds.indexOf(created[0]);
   S.zoom = null; S.sort = { key: null, dir: 1 }; S.dirty = true;
@@ -9439,7 +10652,7 @@ function layoutRows(ds) {
   grid(L('Lag time ({~0})', TU()), w => { const v = pval(res[w.id], 'lag'); return isFinite(v) ? { v: +v.toFixed(3), align: 'center' } : null; });
   return { rows: out, widths: [5].concat(Array(Cn).fill(Cn > 12 ? 9 : 14)) };
 }
-function infoRows(ds, scope) {
+function infoRows(ds, scope, noNotes) {       // noNotes: the report gives the notes their own section
   scope = scope || null;                  // exports never follow the on-screen "Selected only": they are given their range
   const s = S.set, tf = TF(), tu = TU();
   const gname = id => { const f = findGroupAny(ds, id); return f ? f.g.name + (ds.sets.length > 1 ? L(' ({0})', ds.sets[f.si].name) : '') : L('not set'); };
@@ -9449,6 +10662,7 @@ function infoRows(ds, scope) {
     [{ v: 'Plate Kinetics Analysis · export notes', bold: true }],
     ['Exported', new Date().toLocaleString(dateLocale())],
     ['Dataset', ud(ds.name)],
+    ...(ds.notes && !noNotes ? [[L('Experiment notes'), ud(ds.notes)]] : []),
     ['Source file', ud(ds.file + (ds.sheet ? ' / ' + ds.sheet : ''))],
     [Lc('report', 'Channel'), ud(ds.channel || '')],
     ...(ds.sourceInfo ? [
@@ -9642,9 +10856,14 @@ function openExport() {
       await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
     }
     const make = async ({ d, od }) => {
-      if (od.format === 'html') return buildReport(d, od);
-      const sheets = trSheets(buildExport(d, od));
-      return od.format === 'xlsx' ? C.buildXlsxAsync(sheets) : od.format === 'csv' ? C.toCSV(sheets[0].rows) : csvFiles(sheets);
+      // Every dataset is written with the settings it is analysed with (with "each dataset separately" they differ).
+      // What reads S.set runs at once, before anything is awaited, and S.set is put back.
+      const shown = S.set;
+      let built;
+      S.set = setOf(d);
+      try { built = od.format === 'html' ? buildReport(d, od) : trSheets(buildExport(d, od)); } finally { S.set = shown; }
+      if (od.format === 'html') return built;
+      return od.format === 'xlsx' ? C.buildXlsxAsync(built) : od.format === 'csv' ? C.toCSV(built[0].rows) : csvFiles(built);
     };
     try {
       if (!all) {
@@ -9747,7 +10966,7 @@ function buildReport(ds, o) {
     fact(Lc('short', 'Positive wells'), `${valid.filter(w => res[w.id].positive).length} / ${valid.length}`) +
     (groups.length ? fact(L('Positive groups'), `${groups.filter(g => g.gpos).length} / ${groups.length}` + (ds.sets.length > 1 ? L(' (set: {0})', ds.sets[ds.gs].name) : '')) : '') +
     '</dl>');
-  if (o.layout) out.push(section(L('Plate layout'), reportPlate(ds) + `<p class="note">${esc(L('Cells are tinted with the colour of the well or its group; “+” marks positive wells; struck-out wells are excluded from the analysis.'))}</p>`));
+  if (ds.notes) out.push(section(L('Experiment notes'), `<p translate="no" style="white-space:pre-wrap;margin:0">${esc(ds.notes)}</p>`));  if (o.layout) out.push(section(L('Plate layout'), reportPlate(ds) + `<p class="note">${esc(L('Cells are tinted with the colour of the well or its group; “+” marks positive wells; struck-out wells are excluded from the analysis.'))}</p>`));
   if (o.curves) {
     const draw = (patch, title) => withView(ds, patch, sel, () => {
       const data = buildChartData(ds, false);
@@ -9771,9 +10990,9 @@ function buildReport(ds, o) {
     }
     if (h) out.push(section(L('Group statistics'), h));
   }
-  if (o.well && ws.length) out.push(section(L('Per-well parameters'), `<div class="scroll">${wellTableHtml(ds, ws, keys, false)}</div><p class="note" translate="no">${esc(methodNote())}</p>`));
+  if (o.well && ws.length) out.push(section(L('Per-well parameters'), `<div class="scroll">${wellTableHtml(ds, ws, keys, false)}</div><p class="note" translate="no">${esc(methodNote(ds))}</p>`));
   if (o.info) {
-    const rows = trRows(infoRows(ds, scope).rows).slice(1);
+    const rows = trRows(infoRows(ds, scope, true).rows).slice(1);
     const cell = c => esc(c && typeof c === 'object' ? (c.v == null ? '' : c.v) : c == null ? '' : c);
     out.push(section(L('Analysis settings'), '<table class="kv" translate="no"><tbody>' + rows.filter(r => r && r.length).map(r => (r.length === 1 ? `<tr class="h"><td colspan="2">${cell(r[0])}</td></tr>` : `<tr><td>${cell(r[0])}</td><td>${cell(r[1])}</td></tr>`)).join('') + '</tbody></table>'));
   }
@@ -9791,14 +11010,18 @@ function buildReport(ds, o) {
 /* ---------- layout paste / gradient ---------- */
 function parseLayoutText(text, ds) {
   const delim = text.includes('\t') ? '\t' : text.includes(',') ? ',' : '\t';
-  let rows = C.parseDelimited(text, delim).map(r => r.map(c => c.trim())).filter(r => r.some(Boolean));
+  // an empty line between others is an empty row of the plate: it keeps its place, or the rows below would move up
+  let rows = C.parseDelimited(text, delim).map(r => r.map(c => c.trim()));
+  while (rows.length && !rows[rows.length - 1].some(Boolean)) rows.pop();
   if (!rows.length) return {};
   const seq = arr => { const f = arr.filter(Boolean); return f.length >= 2 && f.every((c, i) => +c === i + 1); };
-  if (seq(rows[0].slice(1)) && !rows[0][0]) rows = rows.slice(1);
-  else if (seq(rows[0])) rows = rows.slice(1);
-  const rowHdr = rows.length && rows.every(r => /^[A-Pa-p]$/.test(r[0] || ''));
+  const head = rows.findIndex(r => r.some(Boolean));           // a line of column numbers is a heading: it goes, with what is above it
+  if ((seq(rows[head].slice(1)) && !rows[head][0]) || seq(rows[head])) rows = rows.slice(head + 1);
+  const lettered = rows.filter(r => r.some(Boolean));
+  const rowHdr = lettered.length > 0 && lettered.every(r => /^[A-Pa-p]$/.test(r[0] || ''));
   const map = {};
   rows.forEach((r, ri) => {
+    if (rowHdr && !r[0]) return;
     const rIdx = rowHdr ? r[0].toUpperCase().charCodeAt(0) - 65 : ri;
     const cells = rowHdr ? r.slice(1) : r;
     if (rIdx >= ds.plate.rows) return;
@@ -9868,7 +11091,9 @@ function openPasteLayout() {
 /* ---------- quick grouping by plate layout ---------- */
 function qgCompute(ds, o) {
   const W = id => ds.wells[id];
-  const ids = o.scope === 'sel' ? ds.order.filter(id => ds.sel.has(id)) : ds.order.filter(id => W(id).y);
+  const ids = o.scope === 'sel' ? ds.order.filter(id => ds.sel.has(id))
+    : o.scope === 'seldata' ? ds.order.filter(id => ds.sel.has(id) && W(id).y)
+    : ds.order.filter(id => W(id).y);
   let chunks = [];
   const chunk = (arr, n) => { for (let i = 0; i < arr.length; i += n) chunks.push(arr.slice(i, i + n)); };
   if (o.mode === 'coln' || o.mode === 'col') {
@@ -9918,7 +11143,7 @@ function wireHue(root, id, onPick) {
 function openQuickGroup() {
   const ds = curDS();
   if (!ds) return;
-  const nSel = ds.sel.size, nData = dataWells(ds).length, named = dataWells(ds).some(w => w.name);
+  const nSel = ds.sel.size, nSelData = ds.order.filter(id => ds.sel.has(id) && ds.wells[id].y).length, nData = dataWells(ds).length, named = dataWells(ds).some(w => w.name);
   const hues = curPal().colors.slice(0, 8).concat(['#6b7072']);
   let hue = hues[0];
   const m = openModal({
@@ -9926,6 +11151,7 @@ function openQuickGroup() {
     body: `<div class="formgrid">
       <span class="lab">Range</span><div class="opts">
         <label class="chk"><input type="radio" name="qgScope" value="sel"${nSel ? ' checked' : ' disabled'}> ${L('Selected wells ({0})', nSel)}</label>
+        <label class="chk"><input type="radio" name="qgScope" value="seldata"${nSelData ? '' : ' disabled'}> ${L('Selected wells with data ({0})', nSelData)}</label>
         <label class="chk"><input type="radio" name="qgScope" value="data"${nSel ? '' : ' checked'}> ${L('All {0} wells with data', nData)}</label></div>
       <span class="lab">Replicate layout</span><div class="opts" style="flex-direction:column;align-items:flex-start;gap:7px">
         <label class="chk"><input type="radio" name="qgMode" value="coln" checked> Down columns: every <input type="number" id="qgN1" value="${ds.plate.rows > 8 ? 4 : 4}" min="1" max="16" style="width:52px"> wells form a group (e.g. A1–D1, E1–H1)</label>
@@ -10079,7 +11305,7 @@ function projectObj(light) {
     }))
   };
   return Object.assign(PKCollabCore.normalize(legacy), { saved: legacy.saved, appBuildId: COLLAB.buildId, appVersion: APP.version, view: PKCollabCore.clone(S.view), cur: S.cur,
-    activeSets: Object.fromEntries(S.ds.map(ds => [ds.id, ds.sets[ds.gs] && ds.sets[ds.gs].id])) });
+    activeSets: Object.fromEntries(S.ds.map(ds => [ds.id, ds.sets[ds.gs] && ds.sets[ds.gs].id])), notes: Object.fromEntries(S.ds.filter(ds => ds.notes).map(ds => [ds.id, ds.notes])), settingsPerDataset: S.each ? true : undefined, datasetSettings: S.each ? Object.fromEntries(S.ds.map(ds => [ds.id, ds.set || S.set])) : undefined });
 }
 /* A project file can come from somebody else. Identifiers and colours are written into markup and CSS,
    so anything that is not a well-formed value is replaced here instead of being trusted later. */
@@ -10101,7 +11327,9 @@ function projectDatasets(o) {
       t: Float64Array.from(Array.isArray(d.t) || ArrayBuffer.isView(d.t) ? d.t : [], v => (v == null ? NaN : v)), wells: {}, order: [], groups: [], roles: { blank: null, neg: null },
       sel: new Set(), anchor: null, cursor: null, undo: [], redo: [], ver: 1, res: null, resKey: '', ctx: null, warnings: [], loaded: true,
       timeInfo: isObj(d.timeInfo) ? d.timeInfo : {}, sourceInfo: isObj(d.sourceInfo) ? d.sourceInfo : null, isDemo: !!d.isDemo,
-      sets: [], gs: 0
+      sets: [], gs: 0,
+      notes: isObj(o.notes) && typeof o.notes[d.id] === 'string' ? o.notes[d.id].slice(0, 20000) : '',
+      set: o.settingsPerDataset && isObj(o.datasetSettings) && isObj(o.datasetSettings[d.id]) ? cleanSettings(o.datasetSettings[d.id]) : undefined
     };
     ensureWells(ds);
     const assign = {};
@@ -10152,6 +11380,7 @@ function loadProject(o, keepPrefs) {
     if (o.view) S.view = migrateView(o.view);
     syncSigLabel();
   }
+  S.each = !!o.settingsPerDataset;
   S.setVer++; S.zoom = null; S.sort = { key: null, dir: 1 }; S.dirty = false;
   invAll();
 }
@@ -10162,8 +11391,11 @@ function saveProject() {
 }
 async function openProjectFile(f) {
   try {
-    const o = JSON.parse(await f.text());
-    const go = () => { loadProject(o); toast('Project opened'); };
+    // looked at before anything is asked: a file that is no project must not offer to replace the datasets
+    let o;
+    try { o = JSON.parse(await f.text()); } catch (e) { throw new Error(L('This is not a project file saved by this app')); }
+    if (!projectDatasets(o).length) throw new Error(L('The project contains no datasets'));
+    const go = () => { try { loadProject(o); toast('Project opened'); } catch (e) { toast(L('Cannot open: {~0}', e.message)); } };
     if (COLLAB.active) confirmBox('Replace the shared data', 'Opening a project replaces every dataset in the room and is synchronized to the other participants. If changes are still unsynchronized, save the draft on this page first.', 'Open and synchronize', go);
     else if (S.ds.some(d => !d.isDemo)) confirmBox('Open project', 'Opening a project replaces all current datasets.', 'Open', go);
     else go();
@@ -10222,7 +11454,7 @@ function loadDemo(grouped) {
 
 /* ===================== this browser: theme, autosave, help ===================== */
 /* Choices that belong to the browser rather than to a project, so they are kept out of S.view and of project files. */
-const UI = { theme: 'auto', autosave: true, told: false, themeApplied: false, autoGroup: false };
+const UI = { theme: 'auto', autosave: true, told: false, themeApplied: false, autoGroup: false, settingsOpen: false };
 function loadUi() {
   try {
     const o = JSON.parse(localStorage.getItem('pk.ui.v1') || 'null');
@@ -10230,11 +11462,12 @@ function loadUi() {
     if (['auto', 'light', 'dark'].includes(o.theme)) UI.theme = o.theme;
     if (typeof o.autosave === 'boolean') UI.autosave = o.autosave;
     if (typeof o.autoGroup === 'boolean') UI.autoGroup = o.autoGroup;
+    if (typeof o.settingsOpen === 'boolean') UI.settingsOpen = o.settingsOpen;
     UI.told = !!o.told;
   } catch (e) { /* storage unavailable */ }
 }
 function saveUi() {
-  try { localStorage.setItem('pk.ui.v1', JSON.stringify({ theme: UI.theme, autosave: UI.autosave, told: UI.told, autoGroup: UI.autoGroup })); } catch (e) { /* storage unavailable */ }
+  try { localStorage.setItem('pk.ui.v1', JSON.stringify({ theme: UI.theme, autosave: UI.autosave, told: UI.told, autoGroup: UI.autoGroup, settingsOpen: UI.settingsOpen })); } catch (e) { /* storage unavailable */ }
 }
 /** 'auto' follows the system (and leaves alone a data-theme set by a host page); 'light' / 'dark' pin it. */
 function applyTheme() {
@@ -10255,13 +11488,14 @@ const AUTOSAVE = (() => {
   let opening = null;
   const wait = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error || new Error('IndexedDB')); });
   const done = tx => { const p = new Promise((res, rej) => { tx.oncomplete = () => res(); tx.onerror = tx.onabort = () => rej(tx.error || new Error('IndexedDB')); }); p.catch(() => {}); return p; };
-  function open() {
+  function open(patience) {
     if (a.db) return Promise.resolve(a.db);
     if (!opening) opening = new Promise((res, rej) => {
-      const late = setTimeout(() => rej(new Error('IndexedDB timeout')), 4000);      // a store that never answers counts as a failure
+      // a store that never answers counts as a failure (the start waits longer: a busy disk can take its time)
+      const late = setTimeout(() => rej(new Error('IndexedDB timeout')), patience || 4000);
       const rq = indexedDB.open(DB, 1);
       rq.onupgradeneeded = () => { for (const s of [META, DATA]) if (!rq.result.objectStoreNames.contains(s)) rq.result.createObjectStore(s); };
-      rq.onsuccess = () => { clearTimeout(late); a.db = rq.result; a.db.onversionchange = () => { if (a.db) a.db.close(); a.db = null; opening = null; }; res(a.db); };
+      rq.onsuccess = () => { clearTimeout(late); a.db = rq.result; a.db.onversionchange = () => { if (a.db) a.db.close(); a.db = null; opening = null; }; a.db.onclose = () => { a.db = null; opening = null; }; res(a.db); };      // (onclose: the browser closed the store itself; the next save opens it again)
       rq.onerror = () => { clearTimeout(late); rej(rq.error || new Error('IndexedDB')); };
       rq.onblocked = () => { clearTimeout(late); rej(new Error('IndexedDB blocked')); };
     }).catch(e => { opening = null; throw e; });
@@ -10301,7 +11535,16 @@ const AUTOSAVE = (() => {
       a.live = a.live || list.length > 0;
       a.fails = 0;
     } catch (e) {
-      if (++a.fails >= 3) a.ok = false;
+      // Three failures in a row: the user is told once, and the saving rests for a minute and starts over with a new
+      // connection (a store the browser has closed, a disk that was full for a while). It used to stop for good
+      // without a word, and a window that stays open for days then kept nothing.
+      if (++a.fails >= 3 && a.ok) {
+        a.ok = false;
+        if (!a.told) { a.told = true; toast(L('This browser does not let the page store data (private mode, or no space left), so autosave is unavailable. Use “Save project”.'), 8000); }
+        if (a.db) { try { a.db.close(); } catch (x) { /* gone already */ } }
+        a.db = null; opening = null;
+        setTimeout(() => { a.ok = true; a.fails = 0; a.written.clear(); touch(); }, 60000);
+      }
     } finally {
       a.busy = false;
       if (a.again) { a.again = false; touch(); }
@@ -10324,7 +11567,7 @@ const AUTOSAVE = (() => {
   async function restore() {
     if (!enabled()) return false;
     let db;
-    try { db = await open(); }
+    try { db = await open(14000); }                  // (boot() gives the session 15 seconds)
     catch (e) { a.ok = false; return false; }        // no storage here (private mode, sandboxed frame): the menu says so at once
     try {
       const tx = db.transaction([META, DATA], 'readonly'), data = tx.objectStore(DATA);
@@ -10435,7 +11678,10 @@ function openHelp() {
       [L('Drag'), L('Zoom into the box; a horizontal drag zooms the time axis only'), 1],
       [L('Double-click'), L('Reset the zoom'), 1],
       [L('Click a curve or its name'), L('Select its well (its whole group in the group-mean view); hold {0} to add', mod), 1],
-      [k('Alt + ' + L('click')) + ' ' + L('legend'), L('Show only this group')]
+      [k('Alt + ' + L('click')) + ' ' + L('legend'), L('Show only this group')],
+      [L('Drag the threshold line'), L('Hold the dashed horizontal line (or the y-axis) and drag; release sets the threshold in the method of the y-axis: signal → fixed value, F − F0 → baseline + increment, F / F0 → baseline × factor (not on the % axis); Ctrl+Z undoes it'), 1],
+      [L('Drag the cut-off line'), L('Hold the dashed vertical line (or the time axis) and drag; release sets the cut-off; at the right end = no cut-off. “Replay” runs it through the run once and sets nothing'), 1],
+      [L('Tab to an axis'), L('Arrow keys, PageUp / PageDown, Home / End try a value; Enter sets; Esc goes back; Space replays (time axis)'), 1]
     ]],
     [L('Tables and more'), [
       [L('Click a column header'), L('Sort; again to reverse, a third time to clear'), 1],
@@ -10558,6 +11804,9 @@ function applyLang() {
     el.innerHTML = h != null ? h : HTML0.get(el);
   });
   if (pack) { trTree(document.body); startI18nObserver(); }
+  // Composed live-status text has no single static translation key. Rebuild it
+  // now, including when no new selection message arrives after a language change.
+  COLLAB.renderBar();
 }
 /** The ready-made y-axis names follow the language as long as they were not edited. */
 function syncSigLabel() {
@@ -10573,8 +11822,8 @@ function setLang(lang) {
   syncSigLabel();
   // an example dataset that was not edited is rebuilt with names in the new language
   S.ds = S.ds.map(d => {
-    if (COLLAB.active || !d.isDemo || d.undo.length || d.loaded) return d;
-    const n = Object.assign(makeDemoDataset(d.demoGrouped), { sel: d.sel });
+    if (COLLAB.active || !d.isDemo || dsEdited(d) || d.notes || d.loaded) return d;
+    const n = Object.assign(makeDemoDataset(d.demoGrouped), { sel: d.sel, undo: d.undo, redo: d.redo, set: d.set });   // (only settings steps; its own settings)
     if (d.gs && n.sets[d.gs]) { stashSet(n); loadSet(n, d.gs); }
     return n;
   });
@@ -10585,7 +11834,8 @@ function setLang(lang) {
 }
 
 /* ===================== shared rooms (temporary collaboration) ===================== */
-/* The room is an editable copy held by the server; navigation (selection, zoom, tabs) stays local. */
+/* The room is an editable copy held by the server. Its curve selection is transient shared state;
+   zoom, language and result tabs remain personal and never enter the project operations. */
 const PKCollabCore = (() => {
   const own = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
   const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -10700,17 +11950,98 @@ const PKCollabCore = (() => {
 })();
 
 const COLLAB = (() => {
-  const K = PKCollabCore, BUILD = 'pk-v3-5-1-1b42c21befb8', API = '/api/collab/rooms';
-  const route = /^\/share\/([A-Za-z0-9_-]{20,128})\/?$/.exec(typeof location === 'undefined' ? '' : location.pathname);
+  const BASE = /^\/kinetics(?:\/|$)/.test(typeof location === 'undefined' ? '' : location.pathname) ? '/kinetics/' : '/';
+  const K = PKCollabCore, BUILD = 'pk-v3-9-1-2f2a4ec08dea', API = BASE + 'api/collab/rooms';
+  const route = new RegExp('^' + BASE + 'share/([A-Za-z0-9_-]{20,128})/?$').exec(typeof location === 'undefined' ? '' : location.pathname);
   const c = { active: !!route, roomId: route ? route[1] : null, state: null, connected: false, closed: false,
     intents: [], conflicts: [], inFlight: null, undoStack: [], redoStack: [], seen: new Set(), deferred: [],
     status: route ? 'Connecting to the shared room…' : '', scheduleTimer: 0, retryTimer: 0, backoff: 1000,
-    socket: null, suppress: false, frozen: false, busy: false, restored: false, deferredRefresh: false };
+    socket: null, suppress: false, frozen: false, busy: false, restored: false, deferredRefresh: false,
+    selection: null, selectionReady: false, selectionObserved: null, selectionQueued: null,
+    selectionFlight: null, selectionTimer: 0, selectionDeferred: false, selectionSelfId: null };
   const operationId = () => 'op_' + (globalThis.crypto && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2));
   const endpoint = tail => API + '/' + encodeURIComponent(c.roomId) + (tail || '');
-  const roomURL = id => location.origin + '/share/' + encodeURIComponent(id);
+  const roomURL = id => location.origin + BASE + 'share/' + encodeURIComponent(id);
   const capture = () => K.normalize(projectObj());
   const ownerKey = () => 'pk.collab.owner.' + c.roomId;
+  // The shared view is transient WebSocket state, separate from project edits,
+  // snapshots and undo. A reconnect never replays an old local selection.
+  function selectedView() {
+    const ds = curDS();
+    return ds ? { datasetId: ds.id, wellIds: ds.order.filter(id => ds.sel.has(id)) } : { datasetId: null, wellIds: [] };
+  }
+  function sameSelection(a, b) {
+    if (!a || !b || a.datasetId !== b.datasetId || a.wellIds.length !== b.wellIds.length) return false;
+    const other = new Set(b.wellIds); return a.wellIds.every(id => other.has(id));
+  }
+  function pauseSelection() {
+    clearTimeout(c.selectionTimer); c.selectionTimer = 0;
+    c.selectionReady = false; c.selectionQueued = null; c.selectionFlight = null; c.selectionDeferred = false;
+  }
+  function selectionChanged() {
+    if (!c.active || !c.state || c.suppress || c.closed) return;
+    S.view.source = 'selected';
+    const next = selectedView();
+    if (sameSelection(next, c.selectionObserved)) return;
+    c.selectionObserved = next;
+    if (!c.connected || !c.selectionReady) return;
+    c.selectionQueued = next;
+    if (!c.selectionTimer) c.selectionTimer = setTimeout(sendSelection, 150);
+  }
+  function sendSelection() {
+    clearTimeout(c.selectionTimer); c.selectionTimer = 0;
+    const next = c.selectionQueued;
+    if (!next || !c.connected || !c.selectionReady || c.closed || c.selectionFlight || !c.socket || c.socket.readyState !== 1) return;
+    // Importing a new dataset commits its data before publishing its selection.
+    const dataset = next.datasetId && c.state && c.state.project.datasets[next.datasetId];
+    if (next.datasetId !== null && (!dataset || next.wellIds.some(id => !Object.prototype.hasOwnProperty.call(dataset.wells, id)))) return;
+    if (sameSelection(next, c.selection)) { c.selectionQueued = null; return; }
+    const op = { type: 'selection', datasetId: next.datasetId, wellIds: next.wellIds,
+      baseSelectionRevision: c.selection.selectionRevision, opId: operationId() };
+    c.selectionQueued = null; c.selectionFlight = op;
+    try { c.socket.send(JSON.stringify(op)); }
+    catch (_) { pauseSelection(); c.connected = false; renderBar(); if (c.socket) c.socket.close(); }
+  }
+  function applySharedSelection() {
+    if (!c.selectionReady || !c.selection || !c.state) return;
+    if (editableFocus()) { c.selectionDeferred = true; return; }
+    const value = c.selectionQueued || c.selectionFlight || c.selection;
+    const idx = S.ds.findIndex(ds => ds.id === value.datasetId);
+    // A structure commit can be briefly deferred while a field is being typed.
+    if (value.datasetId !== null && idx < 0) { c.selectionDeferred = true; return; }
+    const suppressed = c.suppress; c.suppress = true;
+    try {
+      if (idx >= 0) {
+        const ds = S.ds[idx];
+        ds.sel = new Set(value.wellIds.filter(id => Object.prototype.hasOwnProperty.call(ds.wells, id)));
+        S.cur = idx;
+      } else if (!S.ds.length) S.cur = -1;
+      S.view.source = 'selected';
+      c.selectionObserved = selectedView(); c.selectionDeferred = false;
+      // Keep each participant's zoom, language, grouping set and table view.
+      invAll();
+    } finally { c.suppress = suppressed; }
+  }
+  function receiveSelection(message) {
+    if (!Number.isSafeInteger(message.selectionRevision) || message.selectionRevision < 0 ||
+        !(message.datasetId === null || typeof message.datasetId === 'string' && message.datasetId.length <= 128) ||
+        !Array.isArray(message.wellIds) || message.wellIds.length > 384 ||
+        message.wellIds.some(id => typeof id !== 'string' || !/^[A-P](?:[1-9]|1[0-9]|2[0-4])$/.test(id))) return;
+    if (c.selectionReady && c.selection && message.selectionRevision < c.selection.selectionRevision) return;
+    const flight = c.selectionFlight;
+    const ownAck = !!flight && message.opId === flight.opId && message.reason === 'accepted' && message.actorId === message.selfId;
+    // An authoritative newer selection wins. Keep a newer local drag only when
+    // this message acknowledges our own operation; never replay it over others.
+    if (!ownAck) c.selectionQueued = null;
+    if (!flight || message.opId === flight.opId || message.selectionRevision > flight.baseSelectionRevision || message.reason === 'initial') c.selectionFlight = null;
+    if (typeof message.selfId === 'string') c.selectionSelfId = message.selfId;
+    c.selection = { selectionRevision: message.selectionRevision, datasetId: message.datasetId,
+      wellIds: [...new Set(message.wellIds)], actorId: message.actorId || null, actorLabel: message.actorLabel || '' };
+    c.selectionReady = true;
+    applySharedSelection(); renderBar();
+    if (message.conflict || message.reason === 'conflict') toast('The shared curve selection changed; showing the latest selection');
+    if (c.selectionQueued && !c.selectionFlight && !c.selectionTimer) c.selectionTimer = setTimeout(sendSelection, 150);
+  }
   function owner() { try { return localStorage.getItem(ownerKey()) || ''; } catch (_) { return ''; } }
   function editableFocus() {
     const el = document.activeElement;
@@ -10793,7 +12124,7 @@ const COLLAB = (() => {
   function style() {
     if ($('#collabStyle')) return;
     const s = document.createElement('style'); s.id = 'collabStyle';
-    s.textContent = '.collab-bar{margin:10px 14px 0;padding:10px 12px;border:1px solid var(--accent);border-radius:8px;background:var(--surface);display:flex;align-items:center;gap:8px;flex-wrap:wrap}.collab-bar[data-state="warn"]{border-color:var(--warn)}.collab-info{flex:1;min-width:190px}.collab-info strong{font-size:13px}.collab-info small{display:block;color:var(--muted);font-size:11px}.collab-status{color:var(--accent-strong)}.collab-datasets{display:grid;gap:8px;margin:12px 0;max-height:260px;overflow:auto}.collab-datasets label{white-space:normal;align-items:flex-start}.collab-link{display:flex;gap:8px;margin:10px 0}.collab-link input{width:100%;font-family:var(--font-mono)}.collab-version{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--hair)}.collab-version>div{flex:1;min-width:0}.collab-conflict{padding:10px 0;border-bottom:1px solid var(--hair);overflow-wrap:anywhere}.collab-values{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0;color:var(--ink-2)}.collab-values pre{white-space:pre-wrap;font:12px var(--font-mono);max-height:130px;overflow:auto;margin:3px 0}.collab-dialog .hint{line-height:1.6}.collab-bar .btn{height:28px}.collab-disconnected{color:var(--warn)}';
+    s.textContent = '.collab-bar{margin:14px 18px 0;padding:10px 12px;border:1px solid var(--accent);border-radius:8px;background:var(--surface);display:flex;align-items:center;gap:8px;flex-wrap:wrap}.collab-bar[data-state="warn"]{border-color:var(--warn)}.collab-info{flex:1;min-width:190px}.collab-info strong{font-size:13px}.collab-info small{display:block;color:var(--muted);font-size:11px}.collab-status{color:var(--accent-strong)}.collab-datasets{display:grid;gap:8px;margin:12px 0;max-height:260px;overflow:auto}.collab-datasets label{white-space:normal;align-items:flex-start}.collab-link{display:flex;gap:8px;margin:10px 0}.collab-link input{width:100%;font-family:var(--font-mono)}.collab-version{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--hair)}.collab-version>div{flex:1;min-width:0}.collab-conflict{padding:10px 0;border-bottom:1px solid var(--hair);overflow-wrap:anywhere}.collab-values{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0;color:var(--ink-2)}.collab-values pre{white-space:pre-wrap;font:12px var(--font-mono);max-height:130px;overflow:auto;margin:3px 0}.collab-dialog .hint{line-height:1.6}.collab-bar .btn{height:28px}.collab-disconnected{color:var(--warn)}';
     document.head.appendChild(s);
   }
   function modal(opt) { const m = openModal(opt); m.el.classList.add('collab-dialog'); return m; }
@@ -10812,7 +12143,7 @@ const COLLAB = (() => {
     let bar = $('#collabBar');
     if (!bar) {
       bar = document.createElement('section'); bar.id = 'collabBar'; bar.className = 'collab-bar'; bar.setAttribute('aria-label', 'Shared room');
-      bar.innerHTML = '<div class="collab-info"><strong>Temporary collaboration</strong> <span id="collabStatus" class="collab-status" role="status" aria-live="polite"></span><small id="collabExpiry"></small></div><button class="btn sm" data-col="link">Copy room link</button><button class="btn sm" data-col="version">Save version</button><button class="btn sm" data-col="versions">Versions</button><button class="btn sm" data-col="download">Download project / draft</button><button class="btn sm" data-col="conflicts" hidden>Resolve conflicts</button><button class="btn sm" data-col="manage" hidden>Manage room</button>';
+      bar.innerHTML = '<div class="collab-info"><strong>Temporary collaboration</strong> <span id="collabStatus" class="collab-status" role="status" aria-live="polite"></span><small id="collabExpiry"></small><small id="collabSelection" role="status"></small></div><button class="btn sm" data-col="link">Copy room link</button><button class="btn sm" data-col="version">Save version</button><button class="btn sm" data-col="versions">Versions</button><button class="btn sm" data-col="download">Download project / draft</button><button class="btn sm" data-col="conflicts" hidden>Resolve conflicts</button><button class="btn sm" data-col="manage" hidden>Manage room</button>';
       document.querySelector('header.topbar').insertAdjacentElement('afterend', bar);
       bar.addEventListener('click', e => { const b = e.target.closest('[data-col]'); if (!b) return;
         const f = { link: () => copyText(roomURL(c.roomId)), version: saveVersion, versions: showVersions, download, conflicts: showConflicts, manage: manageRoom }[b.dataset.col]; if (f) f(); });
@@ -10821,7 +12152,14 @@ const COLLAB = (() => {
     $('#collabStatus').textContent = status;
     bar.dataset.state = c.closed || c.frozen || c.conflicts.length || !c.connected ? 'warn' : 'ok';
     const exp = c.state && c.state.expiresAt;
-    $('#collabExpiry').textContent = exp ? L('7-day temporary room · deleted on {0} · anyone with the link can edit', new Date(exp).toLocaleString(dateLocale(), { hour12: false })) : 'Loading the room; selections, zoom and views are personal';
+    $('#collabExpiry').textContent = exp ? L('7-day temporary room · deleted on {0} · anyone with the link can edit', new Date(exp).toLocaleString(dateLocale(), { hour12: false })) : 'Loading the room; curve selections are shared';
+    let selectionNote = !c.connected ? L('Selection sharing paused while disconnected') : !c.selectionReady ? L('Loading the shared selection…') : c.selectionDeferred ? L('Selection received · applying when you finish typing') : L('Everyone sees the same selected wells');
+    if (c.connected && c.selectionReady && !c.selectionDeferred && c.selection && c.selection.actorId) {
+      const match = /^(?:Participant|参与者) (\d+)$/.exec(c.selection.actorLabel);
+      const who = c.selection.actorId === c.selectionSelfId ? L('You') : match ? L('Participant {0}', match[1]) : L('Another participant');
+      selectionNote = L('{0} updated the shared selection', who);
+    }
+    $('#collabSelection').textContent = L('Shared curve selection') + ' · ' + selectionNote;
     $('[data-col="conflicts"]', bar).hidden = !c.conflicts.length && !c.frozen;
     $('[data-col="manage"]', bar).hidden = !c.state || c.closed;
     $('[data-col="manage"]', bar).textContent = owner() ? 'Manage room' : 'Restore owner key';
@@ -10887,21 +12225,27 @@ const COLLAB = (() => {
           ds = projectDatasets({ app: 'plate-kinetics', version: 2, set: project.set, datasetOrder: [id], datasets: { [id]: data } })[0];
         } else if (!before || !K.equal(before.datasets[id], data)) {
           const old = before && before.datasets[id], activeSetId = ds.sets[ds.gs] && ds.sets[ds.gs].id;
-          for (const p of ['name', 'file', 'sheet', 'channel', 'isDemo', 'plate', 'timeInfo', 'sourceInfo']) ds[p] = K.clone(data[p]);
+          // What comes from the room is checked the way a project file is (projectDatasets): colours, ids, the plate
+          // and the settings go into the page's markup as they are, so only values of the known shapes are taken.
+          for (const p of ['name', 'file', 'sheet', 'channel', 'isDemo', 'timeInfo', 'sourceInfo']) ds[p] = K.clone(data[p]);
+          ds.plate = isObj(data.plate) && (data.plate.rows > 8 || data.plate.cols > 12) ? { rows: 16, cols: 24 } : { rows: 8, cols: 12 };
           if (!old || !K.equal(old.t, data.t)) ds.t = Float64Array.from(data.t, v => v == null ? NaN : v);
           ensureWells(ds);
           for (const wid of ds.order) {
             const w = ds.wells[wid], a = data.wells[wid] || { id: wid, name: '', color: null, excluded: false, ovf: 0, y: null };
             const oldw = old && old.wells[wid];
             if (!oldw || !K.equal(oldw.y, a.y)) w.y = a.y ? Float64Array.from(a.y, v => v == null ? NaN : v) : null;
-            for (const p of ['name', 'color', 'excluded', 'ovf']) w[p] = a[p];
+            w.name = okText(a.name, ''); w.color = okColor(a.color); w.excluded = !!a.excluded; w.ovf = Number.isFinite(a.ovf) ? a.ovf : 0;
           }
           const oldSets = new Map(ds.sets.map(s => [s.id, s]));
-          ds.sets = data.setOrder.map(sid => {
+          ds.sets = data.setOrder.filter(sid => okId(sid) && isObj(data.sets[sid])).map(sid => {
             const input = data.sets[sid], s = oldSets.get(sid) || { id: sid, groups: [] };
             const oldGroups = new Map((s.groups || []).map(g => [g.id, g]));
-            s.name = input.name; s.assign = K.clone(input.assign);
-            s.groups = input.groupOrder.map(gid => Object.assign(oldGroups.get(gid) || {}, K.clone(input.groups[gid])));
+            s.name = okText(input.name, ''); s.assign = K.clone(input.assign);
+            s.groups = (input.groupOrder || []).filter(gid => okId(gid) && isObj((input.groups || {})[gid])).map(gid => {
+              const g = input.groups[gid];
+              return Object.assign(oldGroups.get(gid) || {}, { id: gid, name: okText(g.name, '') || L('Group'), color: okColor(g.color) || 'slot:1', visible: g.visible !== false });
+            });
             return s;
           });
           if (ds.sets.length) loadSet(ds, Math.max(0, ds.sets.findIndex(s => s.id === activeSetId)));
@@ -10916,7 +12260,7 @@ const COLLAB = (() => {
       S.ds = next;
       const idx = next.findIndex(d => d.id === activeId);
       S.cur = idx >= 0 ? idx : Math.min(Math.max(S.cur, 0), next.length - 1);
-      if (!K.equal(S.set, project.set)) { S.set = Object.assign({}, C.DEFAULT_SETTINGS, K.clone(project.set)); S.setVer++; }
+      if (!K.equal(S.set, project.set)) { const was = S.set; S.set = cleanSettings(project.set); S.setVer++; tbSetElsewhere(was); }
       invAll();
     } finally { c.suppress = false; }
   }
@@ -10940,7 +12284,7 @@ const COLLAB = (() => {
       return;
     }
     if (!c.state) {
-      c.state = next; c.intents = []; applyToApp(next.project, true); renderBar(); return;
+      c.state = next; c.intents = []; applyToApp(next.project, true); applySharedSelection(); renderBar(); return;
     }
     collect();
     const local = capture(), old = c.state, intents = c.intents.slice();
@@ -10962,6 +12306,7 @@ const COLLAB = (() => {
     }
     if (reset) { c.undoStack.length = 0; c.redoStack.length = 0; if (!pending()) toast('The room was restored to a saved version'); }
     if (ack) acknowledge(ack);
+    applySharedSelection(); sendSelection();
     c.status = ''; renderBar(); schedule();
   }
   async function refresh(ack, reset) {
@@ -10970,9 +12315,10 @@ const COLLAB = (() => {
     catch (e) { handleFailure(e); }
   }
   function receive(message) {
+    if (message.type === 'selection') { if (!c.closed) receiveSelection(message); return; }
     if (message.type === 'closed') {
       if (['expired', 'owner_closed', 'expired_or_closed', 'not_found', 'deleted', 'closed'].includes(message.reason)) closeLocal(message.reason === 'expired' ? 'Room expired · the copy on this page can be downloaded' : 'Room closed · the copy on this page can be downloaded');
-      else { c.connected = false; c.status = 'Connection interrupted, reconnecting'; if (c.socket) { c.socket.onclose = null; c.socket.close(); } renderBar(); reconnect(); }
+      else { c.connected = false; pauseSelection(); c.status = 'Connection interrupted, reconnecting'; if (c.socket) { c.socket.onclose = null; c.socket.close(); } renderBar(); reconnect(); }
       return;
     }
     if (message.type === 'versions') { if (c.state) c.state.versions = message.versions; return; }
@@ -10996,9 +12342,10 @@ const COLLAB = (() => {
     const list = c.deferred.splice(0);
     for (const m of list) receive(m);
     if (c.deferredRefresh) { c.deferredRefresh = false; refresh(); }
+    if (c.selectionDeferred) applySharedSelection();
   }
   function closeLocal(message) {
-    c.closed = true; c.connected = false; c.status = message;
+    c.closed = true; c.connected = false; c.status = message; pauseSelection();
     clearTimeout(c.retryTimer); clearTimeout(c.scheduleTimer);
     if (c.socket) { c.socket.onclose = null; c.socket.close(); }
     try { localStorage.removeItem(ownerKey()); } catch (_) { /* storage unavailable */ }
@@ -11010,10 +12357,10 @@ const COLLAB = (() => {
   }
   function connect() {
     if (c.closed || c.versionMismatch || !c.active) return;
-    clearTimeout(c.retryTimer);
+    clearTimeout(c.retryTimer); pauseSelection();
     if (c.socket) { c.socket.onclose = null; c.socket.close(); }
     let ws;
-    try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + endpoint('/events') + '?build=' + encodeURIComponent(BUILD)); }
+    try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + endpoint('/events') + '?build=' + encodeURIComponent(BUILD) + '&selection=1'); }
     catch (_) { reconnect(); return; }
     c.socket = ws;
     ws.onopen = () => { c.connected = true; c.backoff = 1000; c.status = ''; renderBar(); };
@@ -11024,12 +12371,12 @@ const COLLAB = (() => {
       } catch (_) { c.status = 'An update could not be read; synchronizing again'; refresh(); }
     };
     ws.onclose = e => {
-      c.connected = false; renderBar();
+      c.connected = false; pauseSelection(); renderBar();
       if (e.code === 4404 || e.code === 4410) { closeLocal('Room expired or closed · the copy on this page can be downloaded'); return; }
       if (e.code === 4409) { c.status = 'App version mismatch: open the room link again'; renderBar(); return; }
       reconnect();
     };
-    ws.onerror = () => { c.connected = false; renderBar(); };
+    ws.onerror = () => { c.connected = false; pauseSelection(); renderBar(); };
   }
   function reconnect() {
     if (c.closed || c.versionMismatch) return;
@@ -11057,7 +12404,7 @@ const COLLAB = (() => {
           }
         } else { handleFailure(e); c.blocked = true; toast(textMessage(e), 5000); }
       } else {
-        c.connected = false; c.status = 'Disconnected · submission unconfirmed, draft kept';
+        c.connected = false; pauseSelection(); c.status = 'Disconnected · submission unconfirmed, draft kept';
         if (c.socket) c.socket.close(); else reconnect();
       }
     } finally { flight.sending = false; renderBar(); }
@@ -11183,7 +12530,7 @@ const COLLAB = (() => {
     });
   }
   function explainRoom() {
-    const m = modal({ title: Lc('title', 'Temporary collaboration'), body: '<p>Anyone with the link can edit. Data, groups, names, colours, exclusions and analysis settings are shared; the selection, active grouping set, zoom and page view belong to each person.</p><p>Changes synchronize automatically. When two people change the same thing, your draft is kept and you choose. While disconnected the draft exists on this page only, so download it before closing. Undo applies to your own synchronized steps.</p><p>A room keeps using the app version it was created with, and the initial data is saved as the initial version. After 7 days all room data and saved versions are deleted; download the project to keep it.</p>', foot: '<button class="btn primary" data-close>Got it</button>' });
+    const m = modal({ title: Lc('title', 'Temporary collaboration'), body: '<p>Anyone with the link can edit. Data, groups, names, colours, exclusions and analysis settings are shared. Everyone follows the same selected wells and current dataset; zoom, language and page view remain personal.</p><p>Changes synchronize automatically. When two people change the same thing, your draft is kept and you choose. While disconnected the draft exists on this page only, so download it before closing. Undo applies to your own synchronized steps.</p><p>A room keeps using the app version it was created with, and the initial data is saved as the initial version. After 7 days all room data and saved versions are deleted; download the project to keep it.</p>', foot: '<button class="btn primary" data-close>Got it</button>' });
     $('[data-close]', m.el).onclick = m.close;
   }
   function openCreate() {
@@ -11234,7 +12581,7 @@ const COLLAB = (() => {
     window.addEventListener('beforeunload', e => { collect(); if (pending() && !c.closed) { e.preventDefault(); e.returnValue = ''; } });
     await refresh(); if (!c.closed && c.state) connect(); else if (!c.closed) reconnect();
   }
-  return Object.assign(c, { init, schedule, updateButtons, undo: () => historyAction('undo'), redo: () => historyAction('redo'),
+  return Object.assign(c, { init, schedule, selectionChanged, renderBar, updateButtons, undo: () => historyAction('undo'), redo: () => historyAction('redo'),
     capture, collect, applyToApp, receive, acceptState, pump, download, openCreate, buildId: BUILD, core: K });
 })();
 
@@ -11265,7 +12612,22 @@ function init() {
     if (COLLAB.active || !S.dirty || !S.ds.some(d => !d.isDemo) || AUTOSAVE.safe()) return;
     e.preventDefault(); e.returnValue = '';
   });
-  setupPlate(); setupSelBar(); setupGroups(); setupSettings(); setupTabs(); setupChart(); setupResults();
+  setupPlate(); setupSelBar(); setupGroups(); setupSettings(); setupTabs(); setupChart(); setupTimeBar(); setupNotes(); setupResults();
+  // the analysis settings: a strip across the top of the analysis view, opened and closed from the top bar
+  const showSettings = on => { $('#settingsCard').hidden = !on; $('#btnSettings').setAttribute('aria-pressed', String(on)); };
+  showSettings(UI.settingsOpen === true);
+  $('#btnSettings').addEventListener('click', () => {
+    const on = $('#settingsCard').hidden;
+    showSettings(on);
+    UI.settingsOpen = on;
+    saveUi();
+    if (on) {
+      // the top bar stays on top while it is sticky, and it is taller where it wraps
+      const bar = $('.topbar'), card = $('#settingsCard');
+      card.style.scrollMarginTop = (getComputedStyle(bar).position === 'sticky' ? bar.offsetHeight + 14 : 0) + 'px';
+      card.scrollIntoView({ block: 'nearest' });
+    }
+  });
 
   $('#btnImport').addEventListener('click', () => openImport());
   $('#btnOpen').addEventListener('click', () => $('#projInput').click());
@@ -11316,12 +12678,12 @@ function init() {
   $('#btnColoring').addEventListener('click', () => openColoring());
   $('#btnQuickGroup').addEventListener('click', openQuickGroup);
 
-  $('#srcSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.view.source = b.dataset.v; S.zoom = null; inv('chart'); });
+  $('#srcSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || COLLAB.active) return; S.view.source = b.dataset.v; S.zoom = null; inv('chart'); });
   const viewToggle = (id, key, resetZoom) => $(id).addEventListener('change', e => { S.view[key] = e.target.type === 'checkbox' ? e.target.checked : e.target.value; if (resetZoom) S.zoom = null; inv('chart'); });
   viewToggle('#yMode', 'yMode', true);
   viewToggle('#logY', 'logY', true);
   viewToggle('#showSmooth', 'smooth');
-  viewToggle('#showMarkers', 'markers');
+  $('#btnMarkers').addEventListener('click', e => openMarkers(e.currentTarget));
   viewToggle('#bandMode', 'band');
   viewToggle('#showReps', 'reps');
   viewToggle('#labelMode', 'labels');
@@ -11377,24 +12739,29 @@ function boot() {
   if (!AUTOSAVE.enabled()) { invAll(); AUTOSAVE.start(); }
   else {
     // One look into the saved session before the first paint, so the empty state does not flash by.
-    // Storage that does not answer in time is given up on: the page must not wait for it.
-    let settled = false;
-    S.restoring = true;
+    // Storage that does not answer in time is not waited for: the page shows itself, and the session is taken when
+    // it comes (restore() never puts it over data loaded meanwhile). Until that is settled nothing is saved, so a
+    // slow start cannot write over the session it has not read yet; S.restorePending says so to whoever feeds the
+    // page with data (the shell of an instrument program waits for it).
+    let settled = false, shown = false;
+    S.restoring = S.restorePending = true;
+    const show = () => { if (shown) return; shown = true; S.restoring = false; invAll(); };
     const go = r => {
       if (settled) return;
       settled = true;
-      S.restoring = false;
-      invAll();
+      S.restorePending = false;
+      show();
       if (!r) AUTOSAVE.abandon();
       else {
         const when = new Date(r.saved).toLocaleString(dateLocale(), { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-        toast(L('Restored your last session (autosaved {0})', when) + (UI.told ? '' : L('. It is kept in this browser only; you can turn this off under Settings, top right')), UI.told ? 3200 : 7000);
+        toast(L('Restored your last session (autosaved {0})', when) + (UI.told ? '' : L('. It is kept in this browser only; you can turn this off in the menu at the top right')), UI.told ? 3200 : 7000);
         if (!UI.told) { UI.told = true; saveUi(); }
       }
       AUTOSAVE.start();
     };
     AUTOSAVE.restore().then(go, () => go(false));
-    setTimeout(() => go(false), 1500);
+    setTimeout(show, 1500);
+    setTimeout(() => go(false), 15000);      // storage that never answers is given up on
   }
 }
 boot();
