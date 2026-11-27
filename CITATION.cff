@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this software, please cite this version."
 type: software
 title: "Plate Kinetics Analysis"
-version: 3.15.0
+version: 3.16.0
 doi: "10.13140/RG.2.2.10226.06081"
 date-released: 2026-11-27
 authors:
