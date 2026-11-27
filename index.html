@@ -26,7 +26,7 @@
 <meta name="description" content="Plate Kinetics Analysis: kinetic curves from 96- and 384-well plates. Import with automatic layout recognition, grouping, curve parameters, statistics, figures and reports. Runs in the browser, online or offline.">
 <meta name="author" content="hx_mao">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Crect width='26' height='26' rx='6' fill='%23077682'/%3E%3Cg fill='%23fff'%3E%3Ccircle cx='7' cy='9' r='2.7' fill-opacity='.45'/%3E%3Ccircle cx='13' cy='9' r='2.7' fill-opacity='.45'/%3E%3Ccircle cx='19' cy='9' r='2.7'/%3E%3Ccircle cx='7' cy='17' r='2.7' fill-opacity='.45'/%3E%3Ccircle cx='13' cy='17' r='2.7'/%3E%3Ccircle cx='19' cy='17' r='2.7' fill-opacity='.45'/%3E%3C/g%3E%3C/svg%3E">
-<title>孔板动力学分析 · v3.15.0</title>
+<title>孔板动力学分析 · v3.16.0</title>
 <script>
 /* A light / dark choice made in this browser is applied before the first paint (the rest lives at the end of the page). */
 try { var pkUi = JSON.parse(localStorage.getItem('pk.ui.v1') || 'null'); if (pkUi && (pkUi.theme === 'light' || pkUi.theme === 'dark')) document.documentElement.setAttribute('data-theme', pkUi.theme); } catch (e) { /* storage unavailable */ }
@@ -46,8 +46,8 @@ try { var pkUi = JSON.parse(localStorage.getItem('pk.ui.v1') || 'null'); if (pkU
   setTimeout(function () { root.className = root.className.replace(/\s*\bpk-wait\b/, ''); }, 3000);
 })();
 </script>
-<meta name="application-version" content="v3.15.0">
-<meta name="application-build" content="pk-v3-15-0-6f3979297bfa">
+<meta name="application-version" content="v3.16.0">
+<meta name="application-build" content="pk-v3-16-0-82a4158cc0f0">
 <style>
 :root {
   /* Layout idea: inputs on the left (plate, groups, settings), outputs on the right (curves, results).
@@ -416,9 +416,13 @@ table.data.xt tbody tr:hover td { background: color-mix(in srgb, var(--pos) calc
 table.data.xt td[data-ids] { cursor: pointer; }
 table.data.xt td.rh { border-left: 0; vertical-align: middle; background: var(--surface-2); }
 table.data.xt td.na { background: var(--surface); }
+table.data.xt th .u { display: block; font: 400 10.5px/1.3 var(--font-sans); color: var(--muted); margin-top: 1px; }
 .xc-m { font: 600 12px var(--font-mono); color: var(--ink); white-space: nowrap; }
 .xc-m .lag { font-weight: 400; color: var(--ink-2); }
-.xc-s { display: flex; justify-content: center; align-items: center; gap: 4px; font: 11px/1.5 var(--font-mono); color: var(--ink-2); white-space: nowrap; }
+.xc-p { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font: 11.5px/1.45 var(--font-mono); color: var(--ink); white-space: nowrap; margin-top: 2px; }
+.xc-p .xk { font-family: var(--font-sans); font-size: 11px; color: var(--muted); }
+.xc-p .dim, .xc-m .dim, .xc-s .dim { color: var(--muted); font-weight: 400; }
+.xc-s { display: flex; justify-content: center; align-items: center; gap: 4px; font: 11px/1.5 var(--font-mono); color: var(--ink-2); white-space: nowrap; margin-top: 2px; }
 .xc-s .vq { width: 8px; height: 8px; }
 .xc-s .r { font-family: var(--font-sans); color: var(--muted); }
 table.data td .sqs { margin-right: 7px; vertical-align: -1px; }
@@ -1034,7 +1038,7 @@ html.pk-wait body { visibility: hidden; }
       <circle cx="7" cy="17" r="2.6" fill="currentColor" fill-opacity=".22"/><circle cx="13" cy="17" r="2.6" fill="var(--accent)" fill-opacity=".55"/><circle cx="19" cy="17" r="2.6" fill="currentColor" fill-opacity=".22"/>
     </svg>
     <div class="brand-copy">
-      <div class="brand-name"><span>Plate Kinetics Analysis</span><span class="brand-author" translate="no">by hx_mao</span><span class="brand-version" id="brandVersion" role="button" tabindex="0" translate="no" aria-label="Version v3.15.0">v3.15.0</span></div>
+      <div class="brand-name"><span>Plate Kinetics Analysis</span><span class="brand-author" translate="no">by hx_mao</span><span class="brand-version" id="brandVersion" role="button" tabindex="0" translate="no" aria-label="Version v3.16.0">v3.16.0</span></div>
       <div class="brand-sub">PLATE KINETICS · 96 / 384</div>
     </div>
   </div>
@@ -4014,12 +4018,15 @@ const LOCALES = {
       'List': '列表',
       'Cross table': '交叉表',
       'One layer down, the active layer across: positive wells and lag time in every cell': '一个分组层往下、当前分组层往右：每格是阳性孔数和起峰时间',
+      'One layer down, the active layer across: positive wells and the chosen parameters in every cell': '一个分组层往下、当前分组层往右：每格显示阳性孔数及所选参数的统计值',
       'Rows:': '行：',
       'by “{0}”': '按“{0}”',
       ' · {0:well} excluded, not counted': ' · 已排除 {0} 孔不计',
       'The cross table needs two layers with groups': '交叉表要两个有分组的分组层',
       '{0}/{1} positive': '{0}/{1} 阳性',
       'A cell: positive wells / valid wells · mean lag time{0}; the darker, the higher the positive rate; excluded wells do not count': '格子 = 阳性孔 / 有效孔 · 起峰时间均值{0}；底色越深，阳性率越高；排除的孔不计',
+      'A cell: positive wells / valid wells, and the chosen columns ({0}){1}; the darker, the higher the positive rate; excluded wells do not count': '格子 = 阳性孔 / 有效孔，及所选参数列（{0}）{1}；底色越深，阳性率越高；排除的孔不计',
+      ' · copy/CSV exports mean and SD separately': ' · 复制与导出 CSV 会把均值和 SD 拆成独立列',
       '; below it by “{0}”': '；下面按“{0}”分开写',
       'Excluded: left out of every layer': '已排除：所有分组层都不计',
       'No colour: filled, hollow, half filled, dotted (for replicates and batches)': '不用颜色：实心、空心、半实心、圆点（用于复孔、批次）',
@@ -9237,16 +9244,15 @@ function layerStatTools(ds) {
   if (!layerStack(ds)) return '';
   const v = lvOf(ds), cross = v.statv === 'cross', x = cross ? crossTableData(ds) : null, maps = layerMaps(ds);
   const oth = maps.filter(M => M.si !== ds.gs && layerValues(ds, M).length), ex = dataWells(ds).filter(w => w.excluded).length;
-  let h = `<div class="seg sm" role="group" aria-label="${esc(L('How the group statistics are shown'))}"><button type="button" data-lsv="list"${cross ? '' : ' class="on"'}>${esc(L('List'))}</button><button type="button" data-lsv="cross"${cross ? ' class="on"' : ''}${oth.length ? '' : ' disabled'} title="${esc(L('One layer down, the active layer across: positive wells and lag time in every cell'))}">${esc(L('Cross table'))}</button></div>`;
+  let h = `<div class="seg sm" role="group" aria-label="${esc(L('How the group statistics are shown'))}"><button type="button" data-lsv="list"${cross ? '' : ' class="on"'}>${esc(L('List'))}</button><button type="button" data-lsv="cross"${cross ? ' class="on"' : ''}${oth.length ? '' : ' disabled'} title="${esc(L('One layer down, the active layer across: positive wells and the chosen parameters in every cell'))}">${esc(L('Cross table'))}</button></div>`;
   if (x && oth.length > 1) h += `<label class="lbl">${esc(L('Rows:'))} <select data-lxr>${oth.map(M => `<option value="${esc(M.s.id)}"${M.si === x.ri ? ' selected' : ''} translate="no">${esc(M.name)}</option>`).join('')}</select></label>`;
   return h + `<span class="hint" translate="no">${esc(L('by “{0}”', x ? x.R.name + ' × ' + x.A.name : layerStatNames(ds)) + (ex ? L(' · {0:well} excluded, not counted', ex) : ''))}</span>`;
 }
 /** The cross table of stacked layers: rows the groups of a layer R (the one chosen, else the one the charts are split
     by or the combinations take, else the first other layer), columns those of the active layer; a cell the wells of
-    both: positive / valid wells, the mean lag time, and the same per group of a third layer I; the wells the filters
-    let through (with "Selected only": of the selected wells, as the list); excluded wells do not count. null when two
-    layers with groups are wanting. */
-function crossTableData(ds) {
+    both: positive / valid wells, and the chosen parameter columns (following Show: mean ± SD / SEM / CV% / median),
+    plus the same per group of a third layer I; excluded wells do not count. null when two layers with groups are wanting. */
+function crossTableData(ds, keys) {
   const M = layerModel(ds);
   if (!M) return null;
   const maps = layerMaps(ds), gs = ds.gs, v = lvOf(ds), res = ds.res || {}, A = maps[gs], scope = statScope(ds);
@@ -9257,10 +9263,17 @@ function crossTableData(ds) {
   if (!oth.includes(ri)) { const k = M.keys.find(i => i !== gs); ri = M.facet != null ? M.facet : k != null && oth.includes(k) ? k : oth[0]; }
   const ii = oth.find(i => i !== ri && M.filt[i] == null), R = maps[ri], I = ii != null ? maps[ii] : null;
   const ids = ds.order.filter(id => ds.wells[id].y && layerPasses(maps, M.filt, id) && (!scope || scope.has(id)));
+  const pkeys = Array.isArray(keys) ? keys.filter(k => PARAMS[k]) : (typeof paramCols === 'function' ? paramCols() : (S.view.cols || []).filter(k => PARAMS[k]));
+  const calcKeys = pkeys.includes('lag') ? pkeys : (PARAMS.lag ? ['lag'].concat(pkeys) : pkeys);
+  const tf = TF();
   const stat = cids => {
     const ws = cids.map(id => ds.wells[id]), ok = ws.filter(w => !w.excluded && res[w.id] && res[w.id].n), pos = ok.filter(w => res[w.id].positive);
-    const lags = pos.map(w => pval(res[w.id], 'lag')).filter(x => isFinite(x));
-    return { ids: cids, nd: ok.length, pos: pos.length, ex: ws.length - ws.filter(w => !w.excluded).length, lag: lags.length ? lags.reduce((a, b) => a + b, 0) / lags.length : NaN };
+    const st = {}, ev = {};
+    for (const k of calcKeys) {
+      st[k] = C.stats(ok.map(w => pval(res[w.id], k)));
+      if (PARAMS[k].ev) ev[k] = C.kmMedian(ok.map(w => pval(res[w.id], k)), ok.filter(w => res[w.id].noRise && !isFinite(res[w.id][k])).map(w => res[w.id].tObs * tf));
+    }
+    return { ids: cids, nd: ok.length, pos: pos.length, ex: ws.length - ws.filter(w => !w.excluded).length, lag: st.lag ? st.lag.mean : NaN, st, ev };
   };
   const rvals = layerValues(ds, R), none = ids.some(id => !R.of.get(id) && A.of.get(id));
   const rows = rvals.concat(none ? [null] : []).map(g => ({ g, cells: cols.map(c => {
@@ -9270,37 +9283,98 @@ function crossTableData(ds) {
     s.sub = I ? layerCombos(ds, maps, [ii], cids).map(x => Object.assign(stat(x.ids), { g: x.parts[0] })) : [];
     return s;
   }) }));
-  return { ri, ii, R, I, A, cols, rows, scope };
+  return { ri, ii, R, I, A, cols, rows, scope, keys: pkeys };
 }
 function crossTableHtml(ds) {
   const x = crossTableData(ds);
   if (!x) return `<div class="empty">${esc(L('The cross table needs two layers with groups'))}</div>`;
   if (x.scope && !x.rows.some(r => r.cells.some(Boolean))) return `<div class="empty">${esc(L('No data in the selected wells (or all are excluded)'))}</div>`;
-  const dark = isDark(), tu = TU();
-  let h = `<table class="data xt"><thead><tr><th class="txt" translate="no">${esc(x.R.name)} ↓ &nbsp;${esc(x.A.name)} →</th>${x.cols.map(c => `<th translate="no"><span class="sw" style="--c:${resolveColor(c.color, dark)}"></span>${esc(layerGName(ds, ds.gs, c))}</th>`).join('')}</tr></thead><tbody>`;
+  const dark = isDark(), keys = x.keys;
+  const mode = S.view.gstat || 'sd', centre = mode === 'median' ? 'median' : 'mean';
+  const gstatList = typeof GSTAT !== 'undefined' ? GSTAT : [['sd', 'mean ± SD'], ['sem', 'mean ± SEM'], ['cv', 'mean (CV%)'], ['median', 'median [range]']];
+  const subLabel = (gstatList.find(m => m[0] === mode) || gstatList[0])[1];
+  const dec = {};
+  const fmtV = (v, k) => (typeof fmt === 'function' && dec[k] != null ? fmt(v, dec[k]) : fmtAuto(v, PARAMS[k].kind));
+  if (typeof decFor === 'function') {
+    keys.forEach(k => {
+      let mx = 0;
+      const scan = s => { if (!s || !s.st || !s.st[k]) return; const v = Math.abs(s.st[k][centre]); if (isFinite(v) && v > mx) mx = v; };
+      x.rows.forEach(r => r.cells.forEach(c => { scan(c); if (c && c.sub) c.sub.forEach(scan); }));
+      dec[k] = decFor(mx, PARAMS[k].kind);
+    });
+  }
+  const dim = s => ` <span class="dim">${s}</span>`;
+  const cellVal = (s, k, htmlOut) => {
+    const st = s.st && s.st[k], ev = s.ev && s.ev[k], u = punit(k), uTail = u ? ' ' + u : '';
+    if (!st) return '';
+    if (mode === 'median' && ev && ev.n > ev.events) {
+      const mid = ev.reached ? fmtV(ev.median, k) : '> ' + fmtV(ev.after, k);
+      const rng = ev.events ? `[${fmtV(ev.min, k)} – > ${fmtV(ev.beyond, k)}]` : '';
+      const ntxt = `(n=${ev.events}/${ev.n})`;
+      return htmlOut ? `${esc(mid)}${u ? ' ' + esc(u) : ''}${rng ? dim(esc(rng)) : ''}${dim(esc(ntxt))}` : `${mid}${uTail}${rng ? ' ' + rng : ''} ${ntxt}`;
+    }
+    if (!st.n) return '';
+    const main = fmtV(st[centre], k);
+    let sp = '';
+    if (mode === 'median') sp = st.n > 1 ? `[${fmtV(st.min, k)} – ${fmtV(st.max, k)}]` : '';
+    else if (mode === 'cv') sp = isFinite(st.cv) ? `(${st.cv.toFixed(1)}%)` : '';
+    else if (st.n > 1) sp = '± ' + fmtV(mode === 'sem' ? st.sem : st.sd, k);
+    const ntxt = st.n < s.nd ? `(n=${st.n})` : '';
+    return htmlOut
+      ? `${esc(main)}${sp ? dim(esc(sp)) : ''}${u ? ' ' + esc(u) : ''}${ntxt ? dim(esc(ntxt)) : ''}`
+      : `${main}${sp ? ' ' + sp : ''}${uTail}${ntxt ? ' ' + ntxt : ''}`;
+  };
+  const cornerSub = keys.length === 1 ? `${tr(PARAMS[keys[0]].label)} · ${tr(subLabel)}` : keys.length > 1 ? tr(subLabel) : '';
+  let h = `<table class="data xt"><thead><tr><th class="txt" translate="no">${esc(x.R.name)} ↓ &nbsp;${esc(x.A.name)} →${cornerSub ? `<span class="u">${esc(cornerSub)}</span>` : ''}</th>${x.cols.map(c => `<th translate="no"><span class="sw" style="--c:${resolveColor(c.color, dark)}"></span>${esc(layerGName(ds, ds.gs, c))}</th>`).join('')}</tr></thead><tbody>`;
   for (const row of x.rows) {
     h += `<tr><td class="txt rh" translate="no">${row.g ? vqHtml(row.g.color, dark) + ' ' + esc(layerGName(ds, x.ri, row.g)) : `<span class="dim">${esc(L('not grouped in “{0}”', x.R.name))}</span>`}</td>`;
-    row.cells.forEach((s, k) => {
+    row.cells.forEach((s, ci) => {
       if (!s) { h += '<td class="na">—</td>'; return; }
-      const sub = s.sub.map(t => `<div class="xc-s">${vqHtml(t.g.color, dark)}<span class="r" translate="no">${esc(layerGName(ds, x.ii, t.g))}</span>${t.pos}/${t.nd}</div>`).join('');
-      const what = [layerGName(ds, ds.gs, x.cols[k]), row.g ? layerGName(ds, x.ri, row.g) : L('not grouped in “{0}”', x.R.name)].join(' · ');
-      h += `<td data-ids="${s.ids.join(' ')}" style="--r:${s.nd ? (s.pos / s.nd).toFixed(2) : 0}" title="${esc(what + ': ' + L('{0}/{1} positive', s.pos, s.nd) + (s.ex ? L(' · {0:well} excluded', s.ex) : ''))}" translate="no"><div class="xc-m">${s.pos}/${s.nd}${isFinite(s.lag) ? `<span class="lag"> · ${esc(fmtAuto(s.lag, 'T'))} ${tu}</span>` : ''}</div>${sub}</td>`;
+      const p0 = keys.length ? keys[0] : null;
+      const singleHtml = keys.length === 1 ? cellVal(s, p0, true) : '';
+      const paramLines = keys.length > 1 ? keys.map(k => {
+        const vh = cellVal(s, k, true);
+        return `<div class="xc-p"><span class="xk">${esc(tr(PARAMS[k].label))}</span><span class="xv">${vh || '<span class="dim">—</span>'}</span></div>`;
+      }).join('') : '';
+      const sub = s.sub.map(t => {
+        const tv = p0 ? cellVal(t, p0, true) : '';
+        return `<div class="xc-s">${vqHtml(t.g.color, dark)}<span class="r" translate="no">${esc(layerGName(ds, x.ii, t.g))}</span>${t.pos}/${t.nd}${tv ? `<span class="dim"> · ${tv}</span>` : ''}</div>`;
+      }).join('');
+      const what = [layerGName(ds, ds.gs, x.cols[ci]), row.g ? layerGName(ds, x.ri, row.g) : L('not grouped in “{0}”', x.R.name)].join(' · ');
+      const tipParts = [what + ': ' + L('{0}/{1} positive', s.pos, s.nd) + (s.ex ? L(' · {0:well} excluded', s.ex) : '')];
+      keys.forEach(k => { const vt = cellVal(s, k, false); if (vt) tipParts.push(tr(PARAMS[k].label) + ': ' + vt); });
+      h += `<td data-ids="${s.ids.join(' ')}" style="--r:${s.nd ? (s.pos / s.nd).toFixed(2) : 0}" title="${esc(tipParts.join(' · '))}" translate="no"><div class="xc-m">${s.pos}/${s.nd}${singleHtml ? `<span class="lag"> · ${singleHtml}</span>` : ''}</div>${paramLines}${sub}</td>`;
     });
     h += '</tr>';
   }
-  return `<div class="table-wrap">${h}</tbody></table></div><div class="res-foot" translate="no">${x.scope ? esc(L('Selected wells only ({0}). ', scopeCount(ds, x.scope))) : ''}${esc(L('A cell: positive wells / valid wells · mean lag time{0}; the darker, the higher the positive rate; excluded wells do not count', x.I ? L('; below it by “{0}”', x.I.name) : ''))}</div>`;
+  return `<div class="table-wrap">${h}</tbody></table></div><div class="res-foot" translate="no">${x.scope ? esc(L('Selected wells only ({0}). ', scopeCount(ds, x.scope))) : ''}${esc(L('A cell: positive wells / valid wells, and the chosen columns ({0}){1}; the darker, the higher the positive rate; excluded wells do not count', tr(subLabel), x.I ? L('; below it by “{0}”', x.I.name) : ''))}${esc(L(' · copy/CSV exports mean and SD separately'))}</div>`;
 }
 /** The cross table as rows to copy or save as CSV, as it is shown: a row per group of the layer down (and under it a
-    row per group of the third layer), three columns per group of the active layer - positive wells, valid wells, the
-    mean lag time (the numbers apart: "6/6" would be a date to Excel). */
-function crossTableRows(ds) {
-  const x = crossTableData(ds);
+    row per group of the third layer); for each group of the active layer: positive wells, valid wells, and mean + SD
+    for every selected parameter column (numbers apart: "6/6" would be a date to Excel). */
+function crossTableRows(ds, keys) {
+  const x = crossTableData(ds, keys);
   if (!x) return [[L('The cross table needs two layers with groups')]];
-  const u = punit('lag'), lag = L('{~0} mean', PARAMS.lag.label) + (u ? ' (' + u + ')' : ''), num = v => (isFinite(v) ? +v.toPrecision(10) : null);
+  const num = v => (isFinite(v) ? +v.toPrecision(10) : null);
+  const pkeys = x.keys;
+  const pHeads = pkeys.map(k => {
+    const u = punit(k) ? ' (' + punit(k) + ')' : '';
+    return [L('{~0} mean', PARAMS[k].label) + u, L('{~0} SD', PARAMS[k].label) + u];
+  });
   // (a group named as a group of another layer is: with its layer, "Layer 2·Group 1")
   const head = [ud(x.R.name + ' ↓ · ' + x.A.name + ' →')], nm = (si, g) => layerGName(ds, si, g);
-  x.cols.forEach(c => head.push(ud(nm(ds.gs, c) + ' · ' + L('Positive wells')), ud(nm(ds.gs, c) + ' · ' + L('Valid wells')), ud(nm(ds.gs, c) + ' · ' + lag)));
-  const rows = [head], line = (label, cells) => rows.push([ud(label)].concat(...cells.map(s => (s ? [s.pos, s.nd, num(s.lag)] : [null, null, null]))));
+  x.cols.forEach(c => {
+    const cn = nm(ds.gs, c);
+    head.push(ud(cn + ' · ' + L('Positive wells')), ud(cn + ' · ' + L('Valid wells')));
+    pHeads.forEach(([mh, sh]) => head.push(ud(cn + ' · ' + mh), ud(cn + ' · ' + sh)));
+  });
+  const emptyCols = Array(2 + pkeys.length * 2).fill(null);
+  const rows = [head], line = (label, cells) => rows.push([ud(label)].concat(...cells.map(s => {
+    if (!s) return emptyCols;
+    const out = [s.pos, s.nd];
+    for (const k of pkeys) { const st = s.st && s.st[k]; out.push(st ? num(st.mean) : null, st && st.n > 1 ? num(st.sd) : null); }
+    return out;
+  })));
   for (const row of x.rows) {
     const name = row.g ? nm(x.ri, row.g) : L('not grouped in “{0}”', x.R.name);
     line(name, row.cells);
@@ -17251,7 +17325,7 @@ const PKCollabCore = (() => {
 
 const COLLAB = (() => {
   const BASE = /^\/kinetics(?:\/|$)/.test(typeof location === 'undefined' ? '' : location.pathname) ? '/kinetics/' : '/';
-  const K = PKCollabCore, BUILD = 'pk-v3-15-0-6f3979297bfa', API = BASE + 'api/collab/rooms';
+  const K = PKCollabCore, BUILD = 'pk-v3-16-0-82a4158cc0f0', API = BASE + 'api/collab/rooms';
   const route = new RegExp('^' + BASE + 'share/([A-Za-z0-9_-]{20,128})/?$').exec(typeof location === 'undefined' ? '' : location.pathname);
   const c = { active: !!route, roomId: route ? route[1] : null, state: null, connected: false, closed: false,
     intents: [], conflicts: [], inFlight: null, undoStack: [], redoStack: [], seen: new Set(), deferred: [],
