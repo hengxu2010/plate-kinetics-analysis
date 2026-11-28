@@ -2,9 +2,9 @@ cff-version: 1.2.0
 message: "If you use this software, please cite this version."
 type: software
 title: "Plate Kinetics Analysis"
-version: 3.16.0
+version: 3.19.0
 doi: "10.13140/RG.2.2.10226.06081"
-date-released: 2026-11-27
+date-released: 2026-11-29
 authors:
   - name: hx_mao
 repository-code: "https://github.com/hengxu2010/plate-kinetics-analysis"
